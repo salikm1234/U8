@@ -18,6 +18,21 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
   const [noteText, setNoteText] = useState('');
   const [todayDate, setTodayDate] = useState(getUniversalTime().fullDate);
 
+  // Dimension descriptions
+  const getDimensionDescription = (dimension) => {
+    const descriptions = {
+      Physical: "Nurture your body with movement, nourishment, and rest. Every step, every breath, every moment of care builds your physical foundation.",
+      Mental: "Cultivate inner peace and mental clarity. Through mindfulness and learning, discover the strength and wisdom within your mind.",
+      Environmental: "Connect with the world around you. Small actions create ripples of positive change for our planet and your surroundings.",
+      Financial: "Build a secure and abundant future. Smart choices today create freedom and peace of mind for tomorrow.",
+      Intellectual: "Feed your curiosity and expand your horizons. Every new idea, skill, or insight adds richness to your life's journey.",
+      Occupational: "Grow your professional path with purpose. Find meaning in your work and build the career that fulfills your dreams.",
+      Social: "Cherish the connections that make life beautiful. Strengthen bonds with loved ones and build meaningful relationships.",
+      Spiritual: "Explore the deeper questions of life and find your unique path. Connect with your values and discover what truly matters to you."
+    };
+    return descriptions[dimension] || "Embrace this dimension of your wellness journey with intention and care.";
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       loadGoals();
@@ -200,6 +215,13 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
         <Text style={styles.headerText}>Today's {dimensionName} Goals</Text>
       </View>
 
+      {/* Dimension Description */}
+      <View style={[styles.descriptionContainer, { borderLeftColor: dimensionColor }]}>
+        <Text style={styles.descriptionText}>
+          {getDimensionDescription(dimensionName)}
+        </Text>
+      </View>
+
       <FlatList
         data={goals}
         renderItem={renderItem}
@@ -348,6 +370,24 @@ const styles = StyleSheet.create({
     padding: 10,
     width: '100%',
     marginBottom: 20,
+  },
+  descriptionContainer: {
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  descriptionText: {
+    fontSize: 15,
+    color: '#5A6C7D',
+    lineHeight: 22,
+    fontStyle: 'italic',
   },
 });
 
