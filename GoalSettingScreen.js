@@ -138,7 +138,7 @@ const [currentColorDimension, setCurrentColorDimension] = useState('');
       name: customGoalText,
       quantifiable: quantifiable,
       target: quantifiable ? targetCount : null,
-      hasNotepad: hasNotepad, // Set the notepad value
+      hasNotepad: true, // Always true
     };
 
     setExpandedDimension(null);
@@ -152,7 +152,6 @@ const [currentColorDimension, setCurrentColorDimension] = useState('');
     setCustomGoalText('');
     setQuantifiable(false); // Reset quantifiable checkbox
     setTargetCount(1); // Reset target count
-    setHasNotepad(false); // Reset notepad checkbox
 
     await AsyncStorage.setItem('customGoals', JSON.stringify(updatedCustomGoals));
 
@@ -276,6 +275,36 @@ const [currentColorDimension, setCurrentColorDimension] = useState('');
     </View>
   );
 
+  // DEV UTILITY: Add hasNotepad: true to all scheduled goals in AsyncStorage
+  const addNotepadToAllScheduledGoals = async () => {
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const dateKeys = allKeys.filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key));
+      let updatedCount = 0;
+      for (const key of dateKeys) {
+        const storedGoals = await AsyncStorage.getItem(key);
+        if (storedGoals) {
+          let parsedGoals = JSON.parse(storedGoals);
+          let changed = false;
+          parsedGoals = parsedGoals.map(goal => {
+            if (!goal.hasNotepad) {
+              changed = true;
+              return { ...goal, hasNotepad: true };
+            }
+            return goal;
+          });
+          if (changed) {
+            await AsyncStorage.setItem(key, JSON.stringify(parsedGoals));
+            updatedCount++;
+          }
+        }
+      }
+      Alert.alert('Migration Complete', `Updated ${updatedCount} days of scheduled goals.`);
+    } catch (error) {
+      Alert.alert('Migration Error', error.message);
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.container}>
@@ -327,14 +356,6 @@ const [currentColorDimension, setCurrentColorDimension] = useState('');
           </View>
         )}
 
-        {/* Notepad Toggle */}
-        <View style={styles.quantifiableToggleContainer}>
-          <Text>Add Notepad</Text>
-          <TouchableOpacity onPress={() => setHasNotepad(!hasNotepad)}>
-            <Ionicons name={hasNotepad ? 'checkbox' : 'square-outline'} size={24} color="#000" />
-          </TouchableOpacity>
-        </View>
-
         <TouchableOpacity style={styles.addButton} onPress={addCustomGoal}>
           <Ionicons name="add-circle" size={40} color="#00BFFF" />
           <Text style={styles.addButtonText}>Add Custom Goal</Text>
@@ -378,6 +399,7 @@ const [currentColorDimension, setCurrentColorDimension] = useState('');
         ))}
 <Button title="Reset All Colors to Default" onPress={resetAllColors} />
         <Button title="Reset All Dimensions" onPress={resetAllGoals} />
+        
         <ColorPickerModal
   visible={colorPickerVisible}
   onClose={() => setColorPickerVisible(false)} 
