@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getUniversalTime } from './dateUtils';
 
@@ -24,6 +24,27 @@ const GptPrompterScreen = () => {
 
     Be extremely detailed in your plans. Ensure that every aspect of the goal, including day-to-day or week-to-week planning, is specified. 
     Stay specific to the goal at hand, do not broaden the scope. Be as thorough as possible while only considering the goal in question.`,
+  };
+
+  const clearChat = () => {
+    Alert.alert(
+      'Clear Chat',
+      'Are you sure you want to clear the conversation? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            setConversation([]);
+            setUserInput('');
+          },
+        },
+      ]
+    );
   };
 
   const getGptResponse = async (conversation) => {
@@ -72,6 +93,14 @@ const GptPrompterScreen = () => {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
       <View style={styles.mainContent}>
         <ScrollView style={styles.conversationContainer} contentContainerStyle={{ paddingBottom: 80 }}>
+          {conversation.length === 0 && (
+            <View style={styles.welcomeMessage}>
+              <Ionicons name="chatbubbles-outline" size={60} color="#00BFFF" />
+              <Text style={styles.welcomeText}>Start a conversation with your AI wellness assistant!</Text>
+              <Text style={styles.welcomeSubtext}>Ask about goal planning, wellness tips, or get personalized advice.</Text>
+            </View>
+          )}
+          
           {conversation.map((message, index) => (
             <View key={index} style={[styles.messageBubble, message.isUser ? styles.userBubble : styles.gptBubble]}>
               <Text style={message.isUser ? styles.userText : styles.gptText}>{message.text}</Text>
@@ -91,6 +120,11 @@ const GptPrompterScreen = () => {
             onChangeText={setUserInput}
             multiline
           />
+          {conversation.length > 0 && (
+            <TouchableOpacity style={styles.clearButton} onPress={clearChat}>
+              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
             <Ionicons name="send" size={24} color="#fff" />
           </TouchableOpacity>
@@ -104,6 +138,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    marginTop: 40,
   },
   mainContent: {
     flex: 1,
@@ -112,6 +147,26 @@ const styles = StyleSheet.create({
   conversationContainer: {
     flex: 1,
     padding: 20,
+  },
+  welcomeMessage: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  welcomeSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   messageBubble: {
     borderRadius: 20,
@@ -153,8 +208,14 @@ const styles = StyleSheet.create({
     color: '#333',
     maxHeight: 100,
   },
+  clearButton: {
+    marginLeft: 8,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFF5F5',
+  },
   sendButton: {
-    marginLeft: 10,
+    marginLeft: 8,
     backgroundColor: '#00BFFF',
     borderRadius: 50,
     padding: 10,
