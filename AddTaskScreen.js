@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -7,168 +7,151 @@ import {
     StyleSheet,
     Keyboard,
     TouchableWithoutFeedback,
+    ScrollView,
+    KeyboardAvoidingView,
+    Platform,
   } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { Picker } from '@react-native-picker/picker'; // Import the Picker
+import { Picker } from '@react-native-picker/picker';
+import { getColorForDimension } from './getColorForDimension';
+import { goals } from './goals';
+
+const DIMENSIONS = [
+  'Physical',
+  'Mental',
+  'Environmental',
+  'Financial',
+  'Intellectual',
+  'Occupational',
+  'Social',
+  'Spiritual',
+];
 
 const AddTaskScreen = ({ navigation, route }) => {
-  const { routineId, reloadTasks } = route.params;
-  const [taskName, setTaskName] = useState('');
-  const [taskDescription, setTaskDescription] = useState('');
+  const { routineId } = route.params;
+  const [taskDimension, setTaskDimension] = useState(DIMENSIONS[0]);
+  const [dimensionColors, setDimensionColors] = useState({});
+  const [goalOptions, setGoalOptions] = useState(goals[DIMENSIONS[0]] || []);
+  const [selectedGoalId, setSelectedGoalId] = useState(goals[DIMENSIONS[0]][0]?.id || '');
   const [taskDuration, setTaskDuration] = useState('');
-  const [taskOrderOptions, setTaskOrderOptions] = useState(['1']); // Will update dynamically
-  const [taskOrder, setTaskOrder] = useState(''); // Allow it to be empty
-const [totalTasks, setTotalTasks] = useState(0); // Will track valid positions
-const [addToEnd, setAddToEnd] = useState(false); // Tracks if the "Add to End" button is selected
 
-useEffect(() => {
-    const fetchTasks = async () => {
-      const storedRoutines = JSON.parse(await AsyncStorage.getItem('routines')) || [];
-      const currentRoutine = storedRoutines.find((r) => r.id === routineId);
-      setTotalTasks(currentRoutine?.tasks?.length || 0); // Set number of existing tasks
+  useEffect(() => {
+    // Load dimension colors
+    const loadColors = async () => {
+      const colors = {};
+      for (const dim of DIMENSIONS) {
+        colors[dim] = await getColorForDimension(dim);
+      }
+      setDimensionColors(colors);
     };
-  
-    fetchTasks();
+    loadColors();
   }, []);
 
   useEffect(() => {
-    if (route.params?.task) {
-      const { task } = route.params;
-      setTaskName(task.name);
-      setTaskDescription(task.description);
-      setTaskDuration(task.duration.toString());
-      setTaskOrder(task.stepNumber.toString());
-    }
-  }, [route.params?.task]);
-  
-  // Insert task at the selected position
-
+    setGoalOptions(goals[taskDimension] || []);
+    setSelectedGoalId(goals[taskDimension][0]?.id || '');
+  }, [taskDimension]);
 
   const saveTask = async () => {
-    if (!taskName.trim() || !taskDuration) {
-      alert('Please enter valid task details');
+    const selectedGoal = goalOptions.find(g => g.id === selectedGoalId);
+    if (!selectedGoal || !taskDuration) {
+      alert('Please select a goal and enter a duration.');
       return;
     }
-  
-    let insertIndex = totalTasks; // Default to adding at the end
-  
-    if (!addToEnd) {
-      if (!taskOrder.trim()) {
-        alert('Please enter a task order or select "Add to End".');
-        return;
-      }
-  
-      insertIndex = parseInt(taskOrder) - 1;
-      if (isNaN(insertIndex) || insertIndex < 0 || insertIndex > totalTasks) {
-        alert(`Invalid task order. Choose a position between 1 and ${totalTasks + 1}.`);
-        return;
-      }
-    }
-  
     const newTask = {
-        id: route.params?.task?.id || `${Date.now()}`, // Reuse ID if editing
-        name: taskName,
-        description: taskDescription,
-        duration: parseInt(taskDuration),
-        completed: route.params?.task?.completed || false, // Preserve completion state
-        stepNumber: insertIndex + 1,
-      };
-  
+      id: route.params?.task?.id || `${Date.now()}`,
+      name: selectedGoal.name,
+      description: selectedGoal.name, // Optionally use goal name as description
+      duration: parseInt(taskDuration),
+      completed: route.params?.task?.completed || false,
+      dimension: taskDimension,
+      goalId: selectedGoal.id,
+    };
     const storedRoutines = JSON.parse(await AsyncStorage.getItem('routines')) || [];
     const updatedRoutines = storedRoutines.map((r) => {
-        if (r.id !== routineId) return r;
-      
-        const updatedTasks = route.params?.task
-  ? r.tasks.map((t) => (t.id === route.params.task.id ? newTask : t)) // Update if editing
-  : [...(r.tasks?.slice(0, insertIndex) || []), newTask, ...(r.tasks?.slice(insertIndex) || [])];
-      
-        // Ensure every task gets a correct step number
-        const reindexedTasks = updatedTasks.map((task, index) => ({
-          ...task,
-          stepNumber: index + 1, // Reassign step numbers after insertion
-        }));
-      
-        return { ...r, tasks: reindexedTasks };
-      });
-  
-      await AsyncStorage.setItem('routines', JSON.stringify(updatedRoutines));
-      setTimeout(() => {
-        navigation.goBack();
-      }, 100); // Delay to allow AsyncStorage to finish saving
+      if (r.id !== routineId) return r;
+      let updatedTasks;
+      if (route.params?.task) {
+        // Edit mode: update the task in place
+        updatedTasks = r.tasks.map((t) => (t.id === route.params.task.id ? { ...newTask, stepNumber: t.stepNumber } : t));
+      } else {
+        // Add mode: append to end
+        updatedTasks = [...(r.tasks || []), { ...newTask, stepNumber: (r.tasks?.length || 0) + 1 }];
+      }
+      // Ensure every task gets a correct step number
+      const reindexedTasks = updatedTasks.map((task, index) => ({
+        ...task,
+        stepNumber: index + 1,
+      }));
+      return { ...r, tasks: reindexedTasks };
+    });
+    await AsyncStorage.setItem('routines', JSON.stringify(updatedRoutines));
+    setTimeout(() => {
+      navigation.goBack();
+    }, 100);
   };
 
-
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-  <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={28} color="#000" />
-        <Text style={styles.backButtonText}>Back</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.header}>Add New Task</Text>
-
-      <TextInput
-        style={styles.inputField}
-        placeholder="Task Name"
-        value={taskName}
-        onChangeText={setTaskName}
-      />
-      <TextInput
-        style={styles.inputField}
-        placeholder="Description"
-        value={taskDescription}
-        onChangeText={setTaskDescription}
-      />
-      <TextInput
-        style={styles.inputField}
-        placeholder="Duration (minutes)"
-        keyboardType="numeric"
-        value={taskDuration}
-        onChangeText={setTaskDuration}
-      />
-{!route.params?.task && (
-  <>
-    <View style={styles.inputContainer}>
-      <Text style={styles.label}>Task Order</Text>
-      <TextInput
-        style={[styles.inputField, addToEnd && styles.disabledInput]}
-        placeholder={`Enter position (1-${totalTasks + 1})`}
-        keyboardType="numeric"
-        value={addToEnd ? '' : taskOrder} // Clears input when Add to End is selected
-        onChangeText={(text) => {
-          if (/^\d*$/.test(text)) setTaskOrder(text); // Allow only digits
-        }}
-        editable={!addToEnd} // Disable when "Add to End" is selected
-      />
-    </View>
-
-    <TouchableOpacity
-      style={[styles.addToEndButton, addToEnd && styles.addToEndButtonActive]}
-      onPress={() => {
-        setAddToEnd(!addToEnd);
-        if (!addToEnd) setTaskOrder(''); // Clear task order when enabling Add to End
-      }}
-    >
-      <Text style={styles.addToEndText}>
-        {addToEnd ? 'Adding to End' : 'Add to End'}
-      </Text>
-    </TouchableOpacity>
-  </>
-)}
-
-
-      <TouchableOpacity style={styles.saveButton} onPress={saveTask}>
-        <Text style={styles.saveButtonText}>Save Task</Text>
-      </TouchableOpacity>
-      </View>
-      </TouchableWithoutFeedback>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView 
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+      >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={28} color="#000" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.header}>{route.params?.task ? 'Edit Task' : 'Add Task to Routine'}</Text>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Dimension</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={taskDimension}
+              onValueChange={setTaskDimension}
+              style={{ width: '100%' }}
+              itemStyle={{ fontSize: 20 }}
+            >
+              {DIMENSIONS.map((dim) => (
+                <Picker.Item key={dim} label={dim} value={dim} color={dimensionColors[dim] || '#222'} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Goal</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedGoalId}
+              onValueChange={setSelectedGoalId}
+              style={{ width: '100%' }}
+              itemStyle={{ fontSize: 18, numberOfLines: 3 }}
+            >
+              {goalOptions.map((goal) => (
+                <Picker.Item key={goal.id} label={goal.name} value={goal.id} numberOfLines={2} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+        <TextInput
+          style={styles.inputField}
+          placeholder="Duration (minutes)"
+          keyboardType="numeric"
+          value={taskDuration}
+          onChangeText={setTaskDuration}
+        />
+        <TouchableOpacity style={styles.saveButton} onPress={saveTask}>
+          <Text style={styles.saveButtonText}>Save Task</Text>
+        </TouchableOpacity>
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#F9F9F9' },
+  container: { flexGrow: 1, padding: 20, backgroundColor: '#F9F9F9', paddingBottom: 20 },
   backButton: { 
     flexDirection: 'row', 
     alignItems: 'center', 

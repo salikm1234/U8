@@ -28,6 +28,7 @@
     "react-native-async-storage": "^0.0.1",
     "react-native-calendars": "^1.1309.0",
     "react-native-color-wheel": "^0.1.7",
+    "react-native-draggable-flatlist": "^4.0.3",
     "react-native-dropdown-picker": "^5.4.6",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-push-notification": "^8.1.1",

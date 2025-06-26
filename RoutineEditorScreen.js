@@ -2,18 +2,50 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import ColorPickerModal from './ColorPickerModal'; // ✅ Using correct component
+import { getColorForDimension } from './getColorForDimension';
 
-const emojiList = ['🌞', '🌜', '🏫', '💪', '📚', '🏃', '🎨', '🎵', '🌿', '🔥', '🌊', '🧘', '🌟'];
+const iconList = [
+  { name: 'sunny', label: 'Morning' },
+  { name: 'moon', label: 'Evening' },
+  { name: 'school', label: 'Learning' },
+  { name: 'fitness', label: 'Fitness' },
+  { name: 'library', label: 'Study' },
+  { name: 'walk', label: 'Exercise' },
+  { name: 'color-palette', label: 'Creative' },
+  { name: 'musical-notes', label: 'Music' },
+  { name: 'leaf', label: 'Nature' },
+  { name: 'flame', label: 'Energy' },
+  { name: 'water', label: 'Flow' },
+  { name: 'body', label: 'Wellness' },
+  { name: 'star', label: 'Goals' }
+];
 
 const RoutineEditorScreen = ({ navigation, route }) => {
   const editingRoutine = route.params?.routine || null;
   const [name, setName] = useState(editingRoutine?.name || '');
-  const [color, setColor] = useState(editingRoutine?.color || '#FFB6C1');
-  const [emoji, setEmoji] = useState(editingRoutine?.emoji || '🌞');
+  const [selectedIcon, setSelectedIcon] = useState(editingRoutine?.icon || 'sunny');
   const [weekdays, setWeekdays] = useState(editingRoutine?.weekdays ?? true);
   const [weekends, setWeekends] = useState(editingRoutine?.weekends ?? false);
-  const [colorPickerVisible, setColorPickerVisible] = useState(false);
+  const [dimensionColors, setDimensionColors] = useState({});
+  const [taskDimensions, setTaskDimensions] = useState([]);
+
+  useEffect(() => {
+    // Load dimension colors
+    const dims = ['Physical', 'Mental', 'Environmental', 'Financial', 'Intellectual', 'Occupational', 'Social', 'Spiritual'];
+    const loadColors = async () => {
+      const colors = {};
+      for (const dim of dims) {
+        colors[dim] = await getColorForDimension(dim);
+      }
+      setDimensionColors(colors);
+    };
+    loadColors();
+    // Get unique dimensions from tasks
+    if (editingRoutine?.tasks) {
+      const dimsInTasks = editingRoutine.tasks.map(t => t.dimension).filter(Boolean);
+      setTaskDimensions([...new Set(dimsInTasks)]);
+    }
+  }, [editingRoutine]);
 
   // 💾 Save and load routines
   const saveRoutine = async () => {
@@ -22,8 +54,7 @@ const RoutineEditorScreen = ({ navigation, route }) => {
     const newRoutine = {
       id: editingRoutine?.id || `${Date.now()}`,
       name,
-      color,
-      emoji,
+      icon: selectedIcon,
       weekdays,
       weekends,
       tasks: editingRoutine?.tasks || [],
@@ -64,44 +95,35 @@ const RoutineEditorScreen = ({ navigation, route }) => {
       <Text style={styles.label}>Routine Name</Text>
       <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Enter routine name" />
 
-      <Text style={styles.label}>Select Color</Text>
-      <TouchableOpacity
-        style={[styles.colorPreview, { backgroundColor: color }]}
-        onPress={() => setColorPickerVisible(true)}
-      >
-        <Ionicons name="color-palette" size={30} color="#fff" />
-        <Text style={styles.colorText}>Tap to select color</Text>
-      </TouchableOpacity>
-
-      {/* 🎨 ColorPickerModal with live preview */}
-      <ColorPickerModal
-        visible={colorPickerVisible}
-        onClose={() => setColorPickerVisible(false)}
-        onColorSelected={(selectedColor) => setColor(selectedColor)}
-      />
-
-      <Text style={styles.label}>Select Emoji</Text>
-      <View style={styles.emojiContainer}>
-        {emojiList.map((item, index) => (
+      <Text style={styles.label}>Select Icon</Text>
+      <View style={styles.iconContainer}>
+        {iconList.map((icon, index) => (
           <TouchableOpacity
             key={index}
-            onPress={() => setEmoji(item)}
+            onPress={() => setSelectedIcon(icon.name)}
             style={[
-              styles.emojiCircle,
-              emoji === item && { borderWidth: 2, borderColor: '#4CAF50' },
+              styles.iconCircle,
+              selectedIcon === icon.name && { borderWidth: 3, borderColor: '#4CAF50', backgroundColor: '#E8F5E8' },
             ]}
           >
-            <Text style={styles.emoji}>{item}</Text>
+            <Ionicons name={icon.name} size={28} color={selectedIcon === icon.name ? '#4CAF50' : '#666'} />
+            <Text style={[styles.iconLabel, selectedIcon === icon.name && { color: '#4CAF50', fontWeight: '600' }]}>{icon.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <View style={styles.checkboxContainer}>
         <TouchableOpacity onPress={() => setWeekdays(!weekdays)}>
-          <Text style={styles.checkboxText}>{weekdays ? '☑️' : '⬜️'} Weekdays</Text>
+          <View style={styles.checkboxItem}>
+            <Ionicons name={weekdays ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={weekdays ? '#4CAF50' : '#ccc'} />
+            <Text style={styles.checkboxText}>Weekdays</Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setWeekends(!weekends)}>
-          <Text style={styles.checkboxText}>{weekends ? '☑️' : '⬜️'} Weekends</Text>
+          <View style={styles.checkboxItem}>
+            <Ionicons name={weekends ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={weekends ? '#4CAF50' : '#ccc'} />
+            <Text style={styles.checkboxText}>Weekends</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -122,20 +144,35 @@ const styles = StyleSheet.create({
   container: { padding: 20, marginTop: 40 },
   label: { fontSize: 18, fontWeight: 'bold', marginVertical: 10 },
   input: { borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 15 },
-  colorPreview: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  iconContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
+  iconCircle: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    justifyContent: 'center', 
     alignItems: 'center',
-    paddingVertical: 15,
-    borderRadius: 10,
-    marginBottom: 20,
+    backgroundColor: '#f8f8f8',
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: 'transparent'
   },
-  colorText: { color: '#fff', marginLeft: 10, fontSize: 16, fontWeight: 'bold' },
-  emojiContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  emojiCircle: { padding: 10, borderRadius: 50 },
-  emoji: { fontSize: 30 },
-  checkboxContainer: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 20 },
-  checkboxText: { fontSize: 18 },
+  iconLabel: { 
+    fontSize: 10, 
+    textAlign: 'center', 
+    marginTop: 4, 
+    color: '#666' 
+  },
+  checkboxContainer: { marginVertical: 20 },
+  checkboxItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginVertical: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#f8f8f8'
+  },
+  checkboxText: { fontSize: 16, marginLeft: 12, color: '#333' },
   saveButton: { backgroundColor: '#4CAF50', padding: 15, borderRadius: 10 },
   saveButtonText: { color: 'white', textAlign: 'center', fontWeight: 'bold' },
   deleteButton: { backgroundColor: 'red', padding: 15, borderRadius: 10, marginTop: 10 },
