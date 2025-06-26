@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import DropDownPicker from 'react-native-dropdown-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUniversalTime } from './dateUtils';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -8,8 +8,6 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 const HabitSummaryScreen = ({navigation}) => {
   const [habits, setHabits] = useState([]);
   const [selectedHabit, setSelectedHabit] = useState(null);
-//   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
-//   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [monthlyData, setMonthlyData] = useState([]);
   const [averageCount, setAverageCount] = useState(0);
 
@@ -19,6 +17,14 @@ const HabitSummaryScreen = ({navigation}) => {
   const [selectedYear, setSelectedYear] = useState(initialDate.getFullYear().toString());
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // Dropdown state
+  const [habitOpen, setHabitOpen] = useState(false);
+  const [monthOpen, setMonthOpen] = useState(false);
+  const [yearOpen, setYearOpen] = useState(false);
+  const [habitItems, setHabitItems] = useState([]);
+  const [monthItems, setMonthItems] = useState([]);
+  const [yearItems, setYearItems] = useState([]);
 
   const loadHabits = async () => {
     const storedHabits = await AsyncStorage.getItem('allHabits');
@@ -55,6 +61,10 @@ const HabitSummaryScreen = ({navigation}) => {
   
     setHabits(filteredHabits);
     if (filteredHabits.length > 0) setSelectedHabit(filteredHabits[0].name);
+    setHabitItems(filteredHabits.map((h) => ({
+      label: `${h.name} (${h.totalDays} days tracked)${h.isDeleted ? ' - Deleted' : ''}`,
+      value: h.name
+    })));
   };
 
   const loadMonthlyData = () => {
@@ -87,44 +97,69 @@ const HabitSummaryScreen = ({navigation}) => {
     setAverageCount(validCounts.length ? (validCounts.reduce((sum, c) => sum + c, 0) / validCounts.length).toFixed(2) : 0);
   };
 
-  useEffect(() => { loadHabits(); }, []);
+  useEffect(() => { 
+    loadHabits(); 
+    // Setup month and year dropdowns
+    setMonthItems(months.map((m, idx) => ({ label: m, value: idx.toString() })));
+    const currentYear = new Date().getFullYear();
+    setYearItems(Array.from({ length: 5 }, (_, i) => ({ label: (currentYear - i).toString(), value: (currentYear - i).toString() })));
+  }, []);
   useEffect(() => { loadMonthlyData(); }, [selectedHabit, selectedMonth, selectedYear, habits]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Habit Selector */}
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-  <Ionicons name="arrow-back" size={28} color="#00BFFF" />
-  <Text style={styles.backText}>Back to Habits</Text>
-</TouchableOpacity>
+        <Ionicons name="arrow-back" size={28} color="#00BFFF" />
+        <Text style={styles.backText}>Back to Habits</Text>
+      </TouchableOpacity>
       <Text style={styles.label}>Select Habit:</Text>
-      <Picker selectedValue={selectedHabit} onValueChange={(v) => setSelectedHabit(v)}>
-  {habits.map((h) => (
-    <Picker.Item
-      key={h.name}
-      label={`${h.name} (${h.totalDays} days tracked)${h.isDeleted ? ' - Deleted' : ''}`}
-      value={h.name}
-    />
-  ))}
-</Picker>
+      <DropDownPicker
+        open={habitOpen}
+        value={selectedHabit}
+        items={habitItems}
+        setOpen={setHabitOpen}
+        setValue={setSelectedHabit}
+        setItems={setHabitItems}
+        placeholder="Select a habit"
+        style={{ marginBottom: 16 }}
+        containerStyle={{ marginBottom: 16, zIndex: 30 }}
+        dropDownContainerStyle={{ zIndex: 30 }}
+      />
 
       {/* Month & Year Selector */}
       <View style={styles.dateSelector}>
-  <Picker selectedValue={selectedMonth} style={{ flex: 1 }} onValueChange={(v) => setSelectedMonth(v)}>
-    {months.map((m, idx) => {
-      const isFutureMonth = parseInt(selectedYear, 10) === new Date().getFullYear() && idx > new Date().getMonth();
-      return (
-        <Picker.Item key={idx} label={m} value={idx.toString()} enabled={!isFutureMonth} />
-      );
-    })}
-  </Picker>
-
-  <Picker selectedValue={selectedYear} style={{ flex: 1 }} onValueChange={(v) => setSelectedYear(v)}>
-    {Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - i).toString()).map((y) => (
-      <Picker.Item key={y} label={y} value={y} />
-    ))}
-  </Picker>
-</View>
+        <View style={{ flex: 1, marginRight: 8, zIndex: 20 }}>
+          <DropDownPicker
+            open={monthOpen}
+            value={selectedMonth}
+            items={monthItems}
+            setOpen={setMonthOpen}
+            setValue={setSelectedMonth}
+            setItems={setMonthItems}
+            placeholder="Month"
+            style={{}}
+            containerStyle={{ zIndex: 20 }}
+            dropDownContainerStyle={{ zIndex: 20 }}
+            disabled={false}
+          />
+        </View>
+        <View style={{ flex: 1, zIndex: 10 }}>
+          <DropDownPicker
+            open={yearOpen}
+            value={selectedYear}
+            items={yearItems}
+            setOpen={setYearOpen}
+            setValue={setSelectedYear}
+            setItems={setYearItems}
+            placeholder="Year"
+            style={{}}
+            containerStyle={{ zIndex: 10 }}
+            dropDownContainerStyle={{ zIndex: 10 }}
+            disabled={false}
+          />
+        </View>
+      </View>
 
       {/* Calendar Grid */}
       <Text style={styles.label}>Habit Counts for {months[selectedMonth]} {selectedYear}:</Text>
@@ -166,7 +201,7 @@ const styles = StyleSheet.create({
   countText: { fontSize: 14 },
   averageText: { fontSize: 20, fontWeight: 'bold', marginTop: 20, textAlign: 'center' },
   backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-backText: { fontSize: 18, color: '#00BFFF', marginLeft: 10 },
+  backText: { fontSize: 18, color: '#00BFFF', marginLeft: 10 },
 });
 
 export default HabitSummaryScreen;

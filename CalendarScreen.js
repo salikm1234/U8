@@ -44,9 +44,10 @@ const CalendarScreen = ({ navigation }) => {
   const loadGoals = async (date) => {
     const goals = await AsyncStorage.getItem(date);
     const parsedGoals = goals ? JSON.parse(goals) : [];
-  
+    // Only show scheduled goals, not habits (habits have a createdOn property)
+    const scheduledGoals = parsedGoals.filter(goal => !goal.createdOn);
     const updatedGoals = await Promise.all(
-      parsedGoals.map(async (goal) => {
+      scheduledGoals.map(async (goal) => {
         if (goal.quantifiable) {
           const savedCount = await AsyncStorage.getItem(`count-${goal.id}-${date}`);
           goal.count = savedCount ? parseInt(savedCount) : 0;
@@ -54,7 +55,6 @@ const CalendarScreen = ({ navigation }) => {
         return goal;
       })
     );
-  
     setDailyGoals(updatedGoals);
   };
 

@@ -17,6 +17,8 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
   const [notepadGoal, setNotepadGoal] = useState(null);
   const [noteText, setNoteText] = useState('');
   const [todayDate, setTodayDate] = useState(getUniversalTime().fullDate);
+  const [habits, setHabits] = useState([]);
+  const [combinedList, setCombinedList] = useState([]);
 
   // Dimension descriptions
   const getDimensionDescription = (dimension) => {
@@ -37,6 +39,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
     React.useCallback(() => {
       loadGoals();
       loadDimensionColor();
+      loadHabits();
     }, [])
   );
 
@@ -69,6 +72,43 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
     } catch (error) {
       console.error("Failed to load goals: ", error);
     }
+  };
+
+  const loadHabits = async () => {
+    const today = getUniversalTime().fullDate;
+    const storedHabits = await AsyncStorage.getItem('allHabits');
+    const parsedHabits = storedHabits ? JSON.parse(storedHabits) : {};
+    const todayHabits = parsedHabits[today]?.habits || [];
+    const todayCounts = parsedHabits[today]?.counts || {};
+    setHabits(
+      todayHabits
+        .filter(h => h.dimension === dimensionName)
+        .map(habit => ({ ...habit, count: todayCounts[habit.id] || 0 }))
+    );
+  };
+
+  const incrementHabitCount = async (habitId) => {
+    const today = getUniversalTime().fullDate;
+    const storedHabits = await AsyncStorage.getItem('allHabits');
+    const parsedHabits = storedHabits ? JSON.parse(storedHabits) : {};
+    const todayHabits = parsedHabits[today]?.habits || [];
+    const todayCounts = parsedHabits[today]?.counts || {};
+    todayCounts[habitId] = (todayCounts[habitId] || 0) + 1;
+    parsedHabits[today].counts = todayCounts;
+    await AsyncStorage.setItem('allHabits', JSON.stringify(parsedHabits));
+    loadHabits();
+  };
+
+  const decrementHabitCount = async (habitId) => {
+    const today = getUniversalTime().fullDate;
+    const storedHabits = await AsyncStorage.getItem('allHabits');
+    const parsedHabits = storedHabits ? JSON.parse(storedHabits) : {};
+    const todayHabits = parsedHabits[today]?.habits || [];
+    const todayCounts = parsedHabits[today]?.counts || {};
+    todayCounts[habitId] = Math.max((todayCounts[habitId] || 0) - 1, 0);
+    parsedHabits[today].counts = todayCounts;
+    await AsyncStorage.setItem('allHabits', JSON.stringify(parsedHabits));
+    loadHabits();
   };
 
   const toggleCompleteGoal = async (goalId) => {
@@ -170,41 +210,75 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
     setNotepadGoal(null);
   };
 
-  const renderItem = ({ item }) => (
-    <View style={[styles.goalItem, { backgroundColor: dimensionColor }]}>
-      <Text style={[styles.goalText, item.completed && styles.completedText]}>{item.name}</Text>
-  
-      {/* Show counter for quantifiable goals */}
-      {item.quantifiable && (
-        <TouchableOpacity onPress={() => openCounterModal(item)}>
-          <Text style={styles.counterText}>
-            {item.count}/{item.target} {/* ✅ Counter visible directly */}
-          </Text>
-        </TouchableOpacity>
-      )}
-  
-      {/* Notepad icon */}
-      {item.hasNotepad && (
-        <TouchableOpacity onPress={() => openNotepadModal(item)}>
-          <Ionicons name="document-text-outline" size={24} color="#fff" style={{ marginRight: 10 }} />
-        </TouchableOpacity>
-      )}
-  
-      {/* Complete Task triggers Counter Modal if quantifiable, else toggles complete */}
-      <TouchableOpacity
-  onPress={() =>
-    item.quantifiable ? openCounterModal(item) : toggleCompleteGoal(item.id)
-  }
->
-  <Ionicons
-    name={item.completed ? "checkmark-circle" : "ellipse-outline"}
-    size={28}
-    color={item.completed ? "#00BFFF" : "#fff"}
-  />
-</TouchableOpacity>
-    </View>
-  );
+  useEffect(() => {
+    // Combine goals and habits into a single list, goals first
+    const goalsWithType = goals.map(g => ({ ...g, _type: 'goal' }));
+    const habitsWithType = habits.map(h => ({ ...h, _type: 'habit' }));
+    setCombinedList([...goalsWithType, ...habitsWithType]);
+  }, [goals, habits]);
 
+  const renderItem = ({ item }) => {
+    if (item._type === 'goal') {
+      // Render goal item (existing renderItem logic)
+      return (
+        <View style={[styles.goalItem, { backgroundColor: dimensionColor }]}> 
+          <Text style={[styles.goalText, item.completed && styles.completedText]}>{item.name}</Text>
+          {item.quantifiable && (
+            <TouchableOpacity onPress={() => openCounterModal(item)}>
+              <Text style={styles.counterText}>{item.count}/{item.target}</Text>
+            </TouchableOpacity>
+          )}
+          {item.hasNotepad && (
+            <TouchableOpacity onPress={() => openNotepadModal(item)}>
+              <Ionicons name="document-text-outline" size={24} color="#fff" style={{ marginRight: 10 }} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() =>
+              item.quantifiable ? openCounterModal(item) : toggleCompleteGoal(item.id)
+            }
+          >
+            <Ionicons
+              name={item.completed ? "checkmark-circle" : "ellipse-outline"}
+              size={28}
+              color={item.completed ? "#00BFFF" : "#fff"}
+            />
+          </TouchableOpacity>
+        </View>
+      );
+    } else {
+      // Render habit item
+      const isComplete = item.count >= item.target;
+      return (
+        <View style={{
+          backgroundColor: '#fff',
+          borderRadius: 14,
+          marginVertical: 6,
+          padding: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderLeftWidth: 8,
+          borderLeftColor: dimensionColor,
+          shadowColor: '#000',
+          shadowOpacity: 0.07,
+          shadowRadius: 8,
+          elevation: 2,
+        }}>
+          <Ionicons name="star" size={18} color={dimensionColor} style={{ marginRight: 8 }} />
+          <Text style={{ fontSize: 17, fontWeight: 'bold', color: isComplete ? '#888' : '#222', flex: 1, textDecorationLine: isComplete ? 'line-through' : 'none' }}>{item.name}</Text>
+          <TouchableOpacity onPress={() => decrementHabitCount(item.id)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center', marginRight: 4 }}>
+            <Ionicons name="remove" size={18} color="#888" />
+          </TouchableOpacity>
+          <View style={{ alignItems: 'center', minWidth: 56 }}>
+            <Text style={{ fontSize: 16 }}>{item.count || 0} / {item.target}</Text>
+          </View>
+          <TouchableOpacity onPress={() => incrementHabitCount(item.id)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: dimensionColor, alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>
+            <Ionicons name="add" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: '#f5f5f5' }]}>
@@ -212,7 +286,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={30} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerText}>Today's {dimensionName} Goals</Text>
+        <Text style={styles.headerText}>Today's {dimensionName} Goals & Habits</Text>
       </View>
 
       {/* Dimension Description */}
@@ -222,61 +296,61 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
         </Text>
       </View>
 
+      {/* Goals for this dimension */}
       <FlatList
-        data={goals}
+        data={combinedList}
+        keyExtractor={item => item.id}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={<Text style={styles.noGoalsText}>No goals for this dimension today.</Text>}
+        ListEmptyComponent={<Text style={styles.noGoalsText}>No goals or habits for this dimension today.</Text>}
       />
 
-{/* Modal for Counter */}
-<Modal animationType="slide" transparent={true} visible={counterModalVisible} onRequestClose={closeCounterModal}>
-  <View style={styles.modalContainer}>
-    <View style={styles.modalContent}>
-      <Text style={styles.modalTitle}>{counterGoal?.name}</Text>
-      <Text style={styles.counterText}>
-        Count: {count}/{counterGoal?.target} 
-        {count >= counterGoal?.target && " 🎉 Goal Complete!"}
-      </Text>
+      {/* Modal for Counter */}
+      <Modal animationType="slide" transparent={true} visible={counterModalVisible} onRequestClose={closeCounterModal}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{counterGoal?.name}</Text>
+            <Text style={styles.counterText}>
+              Count: {count}/{counterGoal?.target} 
+              {count >= counterGoal?.target && " 🎉 Goal Complete!"}
+            </Text>
 
-      <TouchableOpacity onPress={incrementCount} style={styles.counterButton}>
-        <Text style={styles.counterButtonText}>+1</Text>
-      </TouchableOpacity>
+            <TouchableOpacity onPress={incrementCount} style={styles.counterButton}>
+              <Text style={styles.counterButtonText}>+1</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity onPress={decrementCount} style={styles.counterButton}>
-        <Text style={styles.counterButtonText}>-1</Text>
-      </TouchableOpacity>
+            <TouchableOpacity onPress={decrementCount} style={styles.counterButton}>
+              <Text style={styles.counterButtonText}>-1</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity onPress={closeCounterModal} style={styles.closeButton}>
-        <Text style={styles.closeButtonText}>Close</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
+            <TouchableOpacity onPress={closeCounterModal} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
-{/* Modal for Notepad */}
-<Modal animationType="slide" transparent={true} visible={notepadModalVisible} onRequestClose={closeNotepadModal}>
-  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <View style={styles.modalContainer}>
-      <KeyboardAvoidingView behavior="padding" style={styles.modalContent}>
-        <Text style={styles.modalTitle}>{notepadGoal?.name}</Text>
+      {/* Modal for Notepad */}
+      <Modal animationType="slide" transparent={true} visible={notepadModalVisible} onRequestClose={closeNotepadModal}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalContainer}>
+            <KeyboardAvoidingView behavior="padding" style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{notepadGoal?.name}</Text>
 
-        <TextInput
-  style={styles.textInput}
-  placeholder="Write your notes here..."
-  multiline
-  value={noteText}
-  onChangeText={(text) => setNoteText(text)}
-/>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Write your notes here..."
+                multiline
+                value={noteText}
+                onChangeText={(text) => setNoteText(text)}
+              />
 
-        <TouchableOpacity onPress={closeNotepadModal} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>Close</Text>
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
-    </View>
-  </TouchableWithoutFeedback>
-</Modal>
-
+              <TouchableOpacity onPress={closeNotepadModal} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </KeyboardAvoidingView>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
@@ -325,7 +399,8 @@ const styles = StyleSheet.create({
     marginTop: 50,
     fontSize: 18,
     color: 'gray',
-  }, modalContainer: {
+  },
+  modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

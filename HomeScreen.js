@@ -16,23 +16,53 @@ const HomeScreen = ({ navigation }) => {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [addedGoals, setAddedGoals] = useState({});
   const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
+  const [habitCounts, setHabitCounts] = useState({});
+  const [habitsByDimension, setHabitsByDimension] = useState({});
 
-  const loadGoals = async () => {
-    const todayDate = getUniversalTime().fullDate; // ✅ Always get the latest date
+  const loadHabits = async () => {
+    const today = getUniversalTime().fullDate;
+    const storedHabits = await AsyncStorage.getItem('allHabits');
+    const parsedHabits = storedHabits ? JSON.parse(storedHabits) : {};
+    const todayHabits = parsedHabits[today]?.habits || [];
+    // Count habits per dimension and store habit names
+    const counts = {};
+    const byDimension = {};
+    todayHabits.forEach(habit => {
+      if (habit.dimension) {
+        counts[habit.dimension] = (counts[habit.dimension] || 0) + 1;
+        if (!byDimension[habit.dimension]) byDimension[habit.dimension] = [];
+        byDimension[habit.dimension].push(habit.name);
+      }
+    });
+    setHabitCounts(counts);
+    setHabitsByDimension(byDimension);
+    // Call loadGoals with the new counts
+    loadGoals(counts);
+  };
+
+  const loadGoals = async (countsArg) => {
+    const todayDate = getUniversalTime().fullDate;
     const goals = await AsyncStorage.getItem(todayDate);
     const parsedGoals = goals ? JSON.parse(goals) : [];
     setDailyGoals(parsedGoals);
-  
-    const dimensionMap = {};
+
+    // Count goals per dimension
+    const goalMap = {};
     parsedGoals.forEach(goal => {
-      dimensionMap[goal.dimension] = (dimensionMap[goal.dimension] || 0) + 1;
+      goalMap[goal.dimension] = (goalMap[goal.dimension] || 0) + 1;
     });
-  
-    const dimensions = Object.keys(dimensionMap).map(dimension => ({
+
+    // Merge with habit counts, and get union of all dimensions
+    const habitCountsToUse = countsArg || habitCounts;
+    const allDimensions = new Set([
+      ...Object.keys(goalMap),
+      ...Object.keys(habitCountsToUse)
+    ]);
+    const dimensions = Array.from(allDimensions).map(dimension => ({
       name: dimension,
-      count: dimensionMap[dimension],
+      count: (goalMap[dimension] || 0) + (habitCountsToUse[dimension] || 0),
     }));
-  
+
     setDimensionData(dimensions);
   };
 
@@ -110,7 +140,7 @@ const HomeScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       loadDimensionColors();    // 🎨 Load all colors first
-      loadGoals();              // 🎯 Load today's goals
+      loadHabits();             // 🟦 Load today's habits (calls loadGoals)
       loadSuggestedGoals();     // 💡 Load suggestions
     }, [])
   );
@@ -121,183 +151,174 @@ const HomeScreen = ({ navigation }) => {
     }
   }, []);
 
-  const renderDimensionItem = ({ item }) => (
-    <TouchableOpacity
-    style={[
-        styles.dimensionItem,
-        {
-          backgroundColor: dimensionColors[item.name] || '#D3D3D3',
-          width: Math.min(120 + item.count * 10, 160),
-height: Math.min(120 + item.count * 10, 160),
-borderRadius: Math.min(120 + item.count * 10, 160) / 2,
-        },
-      ]}
-      onPress={() => navigation.navigate('DimensionGoalsScreen', { dimensionName: item.name })}
-    >
-      <Text style={styles.dimensionText}>{item.name}</Text>
-      <View style={styles.badge}>
-        <Text style={[styles.badgeText, { color: dimensionColors[item.name] || '#000' }]}>
-          {item.count}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderDimensionItem = ({ item }) => {
+    const hasHabits = habitsByDimension[item.name] && habitsByDimension[item.name].length > 0;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.dimensionItem,
+          {
+            backgroundColor: dimensionColors[item.name] || '#D3D3D3',
+            width: Math.min(120 + item.count * 10, 160),
+            height: Math.min(120 + item.count * 10, 160),
+            borderRadius: Math.min(120 + item.count * 10, 160) / 2,
+          },
+        ]}
+        onPress={() => navigation.navigate('DimensionGoalsScreen', { dimensionName: item.name })}
+      >
+        <Text style={styles.dimensionText}>{item.name}</Text>
+        <View style={styles.badge}>
+          <Text style={[styles.badgeText, { color: dimensionColors[item.name] || '#000', marginRight: hasHabits ? 2 : 0 }]}>{item.count}</Text>
+          {hasHabits && (
+            <Ionicons name="star" size={16} color="#FFD700" />
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
+    <ScrollView contentContainerStyle={[styles.container, { flexGrow: 1 }]}>
+      <View>
+        <Text style={styles.header}>Today's Wellness Dimensions</Text>
 
-    
-<ScrollView contentContainerStyle={[styles.container, { flexGrow: 1 }]}>
-    <View>
-  <Text style={styles.header}>Today's Wellness Dimensions</Text>
-
-  <View style={styles.topContainer}>
-    <TouchableOpacity
-      style={styles.goalsButton}
-      onPress={() => navigation.navigate('GoalSetting', { date: getUniversalTime().fullDate })}
-    >
-      <Ionicons name="add-circle" size={40} color="#00BFFF" />
-      <Text style={styles.goalsButtonText}>Plan a Goal</Text>
-    </TouchableOpacity>
-  </View>
-</View>
+        <View style={styles.topContainer}>
+          <TouchableOpacity
+            style={styles.goalsButton}
+            onPress={() => navigation.navigate('GoalSetting', { date: getUniversalTime().fullDate })}
+          >
+            <Ionicons name="add-circle" size={40} color="#00BFFF" />
+            <Text style={styles.goalsButtonText}>Plan a Goal</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {dimensionData.length > 0 ? (
-      <View style={{ flexGrow: 1 }}>
-      <FlatList
-        data={dimensionData}
-        renderItem={renderDimensionItem}
-        keyExtractor={(item) => item.name}
-        numColumns={2}
-        columnWrapperStyle={styles.dimensionRow}
-        contentContainerStyle={styles.dimensionList}
-        scrollEnabled={false}   // ✅ Keeps FlatList from scrolling independently
-      />
-    </View>
+        <View style={{ flexGrow: 1 }}>
+          <FlatList
+            data={dimensionData}
+            renderItem={renderDimensionItem}
+            keyExtractor={(item) => item.name}
+            numColumns={2}
+            columnWrapperStyle={styles.dimensionRow}
+            contentContainerStyle={styles.dimensionList}
+            scrollEnabled={false}   // ✅ Keeps FlatList from scrolling independently
+          />
+        </View>
       ) : (
         <Text style={styles.noGoalsText}>No goals scheduled for today.</Text>
       )}
-{/* <Text>Hey</Text> */}
-{showSuggestions && (
-  <View style={styles.suggestedContainer}>
-    <View style={styles.suggestedHeader}>
-  <TouchableOpacity
-    style={styles.suggestedHeaderToggle}
-    onPress={toggleSuggestions} // 🔥 Animated toggle
-  >
-    <Text style={styles.suggestedHeaderText}>Suggested Goals</Text>
-    <Ionicons
-    name={suggestionsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
-    size={30}
-    color="#00BFFF"
-    style={{ marginLeft: 10 }}  // 🎯 Adds space between text & toggle icon
-  />
-  </TouchableOpacity>
-  <TouchableOpacity onPress={refreshSuggestions}>
-    <Ionicons name="refresh-circle" size={30} color="#00BFFF" />
-  </TouchableOpacity>
-</View>
-{suggestionsExpanded && suggestedGoals.map((goal) => (
-  <View
-    key={goal.id}
-    style={[
-      styles.suggestedGoalItem,
-      { backgroundColor: dimensionColors[goal.dimension] || '#D3D3D3' },
-    ]}
-  >
-    <Text style={styles.goalText}>{goal.name}</Text>
-    <TouchableOpacity
-      onPress={() => scheduleSuggestedGoal(goal)}
-      disabled={addedGoals[goal.id]}
-    >
-      <Ionicons
-        name={addedGoals[goal.id] ? "checkmark-circle-outline" : "add-circle-outline"}
-        size={30}
-        color={addedGoals[goal.id] ? "green" : "#fff"}
-      />
-    </TouchableOpacity>
-  </View>
-))}
-    
-  </View>
-)}
 
-{/* <Text>Hey</Text> */}
-
-{/* <TouchableOpacity
-  style={styles.planButton}
-  onPress={() => navigation.navigate('GoalSelection', { date: getUniversalTime().fullDate })}
->
-  <Ionicons name="add-circle" size={50} color="#00BFFF" />
-  <Text style={styles.planButtonText}>Plan More Goals</Text>
-</TouchableOpacity> */}
+      {showSuggestions && (
+        <View style={styles.suggestedContainer}>
+          <View style={styles.suggestedHeader}>
+            <TouchableOpacity
+              style={styles.suggestedHeaderToggle}
+              onPress={toggleSuggestions} // 🔥 Animated toggle
+            >
+              <Text style={styles.suggestedHeaderText}>Suggested Goals</Text>
+              <Ionicons
+                name={suggestionsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+                size={30}
+                color="#00BFFF"
+                style={{ marginLeft: 10 }}  // 🎯 Adds space between text & toggle icon
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={refreshSuggestions}>
+              <Ionicons name="refresh-circle" size={30} color="#00BFFF" />
+            </TouchableOpacity>
+          </View>
+          {suggestionsExpanded && suggestedGoals.map((goal) => (
+            <View
+              key={goal.id}
+              style={[
+                styles.suggestedGoalItem,
+                { backgroundColor: dimensionColors[goal.dimension] || '#D3D3D3' },
+              ]}
+            >
+              <Text style={styles.goalText}>{goal.name}</Text>
+              <TouchableOpacity
+                onPress={() => scheduleSuggestedGoal(goal)}
+                disabled={addedGoals[goal.id]}
+              >
+                <Ionicons
+                  name={addedGoals[goal.id] ? "checkmark-circle-outline" : "add-circle-outline"}
+                  size={30}
+                  color={addedGoals[goal.id] ? "green" : "#fff"}
+                />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flexGrow: 1,            // ✅ Ensure the ScrollView takes full height
-        paddingTop: 80,
-        paddingHorizontal: 20,
-        backgroundColor: '#f5f5f5',
-      },
-      topContainer: {
-        flexDirection: 'row',            // ✅ Side-by-side alignment
-        justifyContent: 'space-between', // ✅ Push buttons to edges
-        alignItems: 'center',            // ✅ Align vertically at the center
-        marginBottom: 20,
-      },
-      
-      goalsButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 60,
-        paddingVertical: 10,
-        paddingHorizontal: 15,
-        backgroundColor: '#E0F7FF',
-        borderRadius: 10,
-        width: '100%',
-        marginBottom: 20,
-        marginTop: 10,
-        shadowColor: '#00BFFF',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-      
-      goalsButtonText: {
-        fontSize: 20,
-        marginLeft: 15,
-        color: '#00BFFF',
-        fontWeight: 'bold',
-      },
-      
-      settingsButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 60,                     // ✅ Same height as planButtonTop
-        paddingVertical: 10,
-        paddingHorizontal: 15,          // ✅ Same padding for alignment
-        backgroundColor: '#E0F7FF',
-        borderRadius: 10,
-        width: '48%',                   // ✅ Adjust width for alignment
-      },
-      
-      settingsLabel: {
-        fontSize: 18,
-        color: '#00BFFF',
-        marginRight: 5,
-      },
-      header: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center', /* ✅ Center the text */
-        width: '100%',       /* ✅ Ensure it spans full width for proper centering */
-      },
+  container: {
+    flexGrow: 1,            // ✅ Ensure the ScrollView takes full height
+    paddingTop: 80,
+    paddingHorizontal: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  topContainer: {
+    flexDirection: 'row',            // ✅ Side-by-side alignment
+    justifyContent: 'space-between', // ✅ Push buttons to edges
+    alignItems: 'center',            // ✅ Align vertically at the center
+    marginBottom: 20,
+  },
+  
+  goalsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 60,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#E0F7FF',
+    borderRadius: 10,
+    width: '100%',
+    marginBottom: 20,
+    marginTop: 10,
+    shadowColor: '#00BFFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  
+  goalsButtonText: {
+    fontSize: 20,
+    marginLeft: 15,
+    color: '#00BFFF',
+    fontWeight: 'bold',
+  },
+  
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 60,                     // ✅ Same height as planButtonTop
+    paddingVertical: 10,
+    paddingHorizontal: 15,          // ✅ Same padding for alignment
+    backgroundColor: '#E0F7FF',
+    borderRadius: 10,
+    width: '48%',                   // ✅ Adjust width for alignment
+  },
+  
+  settingsLabel: {
+    fontSize: 18,
+    color: '#00BFFF',
+    marginRight: 5,
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center', /* ✅ Center the text */
+    width: '100%',       /* ✅ Ensure it spans full width for proper centering */
+  },
   dimensionList: {
     justifyContent: 'center',
     marginTop:20,
@@ -329,6 +350,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'row',
   },
   badgeText: {
     fontWeight: 'bold',
@@ -390,8 +412,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 10,
   },
- 
- 
+  goalText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
 });
 
 export default HomeScreen;
