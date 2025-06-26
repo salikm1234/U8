@@ -1,3 +1,37 @@
+/**
+ * RoutineActionScreen - Routine Execution and Task Management Component
+ * 
+ * This screen allows users to execute wellness routines by completing individual tasks.
+ * Users can view, complete, reorder, and manage tasks within a specific routine.
+ * 
+ * Key Features:
+ * - Display routine tasks with completion status
+ * - Drag-and-drop task reordering
+ * - Task completion tracking with visual feedback
+ * - Task editing and deletion capabilities
+ * - Color-coded tasks by wellness dimension
+ * - Daily progress persistence
+ * - Integration with routine tracking system
+ * 
+ * Data Structure:
+ * - Tasks are stored within routine objects in AsyncStorage
+ * - Each task has an ID, name, description, duration, dimension, and step number
+ * - Completion status is tracked separately by date and routine ID
+ * - Task order is maintained through step numbers
+ * 
+ * User Interactions:
+ * - Long press to drag and reorder tasks
+ * - Tap to mark tasks as complete/incomplete
+ * - Edit and delete individual tasks
+ * - Add new tasks to the routine
+ * 
+ * Visual Design:
+ * - Modern card-based layout with spacious design
+ * - Color-coded accent bars for dimension identification
+ * - Integrated action buttons with subtle styling
+ * - Compact header with routine information
+ */
+
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -21,7 +55,10 @@ import { getColorForDimension } from './getColorForDimension';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const RoutineActionScreen = ({ navigation, route }) => {
+  // Extract routine data from navigation parameters
   const { routine } = route.params;
+  
+  // State for task management and UI
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
@@ -30,6 +67,7 @@ const RoutineActionScreen = ({ navigation, route }) => {
   const flatListRef = useRef(null);
   const [dimensionColors, setDimensionColors] = useState({});
 
+  // Load routine tasks when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       loadRoutineTasks();
@@ -37,8 +75,8 @@ const RoutineActionScreen = ({ navigation, route }) => {
     }, [routine.id])
   );
 
+  // Load dimension colors for visual distinction
   useEffect(() => {
-    // Load all dimension colors on mount
     const loadColors = async () => {
       const dims = ['Physical', 'Mental', 'Environmental', 'Financial', 'Intellectual', 'Occupational', 'Social', 'Spiritual'];
       const colors = {};
@@ -50,6 +88,11 @@ const RoutineActionScreen = ({ navigation, route }) => {
     loadColors();
   }, []);
 
+  /**
+   * Loads routine tasks from AsyncStorage and resets completion status daily
+   * Handles daily completion reset to ensure fresh start each day
+   * Sorts tasks by step number and loads completion status
+   */
   const loadRoutineTasks = async () => {
     try {
       const todayKey = getUniversalTime().fullDate;
@@ -70,10 +113,15 @@ const RoutineActionScreen = ({ navigation, route }) => {
       setTasks(updatedTasks);
       setRefreshFlag((prev) => prev + 1);
     } catch (error) {
-      console.error('❌ Error loading routine tasks:', error);
+      console.error('Error loading routine tasks:', error);
     }
   };
 
+  /**
+   * Persists updated task list to AsyncStorage
+   * Updates the routine's task list and maintains data consistency
+   * Handles daily completion reset logic
+   */
   const persistTasks = async (updatedTasks) => {
     const storedRoutines = JSON.parse(await AsyncStorage.getItem('routines')) || [];
     const updatedRoutines = storedRoutines.map((r) =>
@@ -88,6 +136,11 @@ const RoutineActionScreen = ({ navigation, route }) => {
     }
   };
 
+  /**
+   * Toggles the completion status of a task
+   * Updates both local state and persistent storage
+   * Triggers progress update notification for other screens
+   */
   const toggleTaskCompletion = async (taskId) => {
     try {
       const todayKey = getUniversalTime().fullDate;
@@ -104,6 +157,10 @@ const RoutineActionScreen = ({ navigation, route }) => {
     }
   };
 
+  /**
+   * Updates specific fields of a task
+   * Used for inline editing of task properties
+   */
   const handleTaskFieldChange = (taskId, field, value) => {
     const updatedTasks = tasks.map((task) =>
       task.id === taskId ? { ...task, [field]: value } : task
@@ -111,6 +168,10 @@ const RoutineActionScreen = ({ navigation, route }) => {
     setTasks(updatedTasks);
   };
 
+  /**
+   * Shows confirmation dialog before deleting a task
+   * Prevents accidental deletion of tasks
+   */
   const confirmDeleteTask = (taskId) => {
     Alert.alert('Delete Task', 'Are you sure you want to delete this task?', [
       { text: 'Cancel', style: 'cancel' },
@@ -122,6 +183,11 @@ const RoutineActionScreen = ({ navigation, route }) => {
     ]);
   };
 
+  /**
+   * Deletes a task and reorders remaining tasks
+   * Updates step numbers to maintain proper order
+   * Persists changes to storage
+   */
   const deleteTask = async (taskId) => {
     const updatedTasks = tasks.filter((task) => task.id !== taskId);
     updatedTasks.forEach((task, index) => (task.stepNumber = index + 1));
@@ -129,6 +195,10 @@ const RoutineActionScreen = ({ navigation, route }) => {
     await persistTasks(updatedTasks);
   };
 
+  /**
+   * Navigates to the add task screen
+   * Handles returning new task data and updating the task list
+   */
   const navigateToAddTask = async () => {
     const newTask = await navigation.navigate('AddTaskScreen', { routineId: routine.id });
     if (newTask) {
@@ -136,11 +206,16 @@ const RoutineActionScreen = ({ navigation, route }) => {
     }
   };
 
+  // Trigger re-render when refresh flag changes
   useEffect(() => {
     setTasks((prev) => [...prev]);
   }, [refreshFlag]);
 
-  // Drag-and-drop handler
+  /**
+   * Handles drag-and-drop reordering of tasks
+   * Reassigns step numbers based on new order
+   * Persists the new order to storage
+   */
   const handleDragEnd = async ({ data }) => {
     // Reassign step numbers
     const reordered = data.map((task, idx) => ({ ...task, stepNumber: idx + 1 }));
@@ -148,6 +223,11 @@ const RoutineActionScreen = ({ navigation, route }) => {
     await persistTasks(reordered);
   };
 
+  /**
+   * Renders individual task cards with completion status and actions
+   * Each card shows task details, completion status, and action buttons
+   * Supports drag-and-drop interaction for reordering
+   */
   const renderTaskItem = ({ item, drag, isActive }) => {
     return (
       <TouchableOpacity

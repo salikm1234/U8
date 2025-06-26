@@ -1,3 +1,21 @@
+/**
+ * Main App Component - U8 Wellness Tracking Application
+ * 
+ * This is the root component of the U8 wellness tracking app. The app focuses on
+ * tracking health and wellness across 8 different dimensions: Physical, Mental,
+ * Environmental, Financial, Intellectual, Occupational, Social, and Spiritual.
+ * 
+ * The app provides features for:
+ * - Setting and tracking daily habits
+ * - Creating and managing wellness routines
+ * - Goal setting and progress monitoring
+ * - Calendar-based tracking and visualization
+ * - Dimension-based goal management
+ * 
+ * This component sets up the navigation container which wraps the entire
+ * application and provides navigation context to all child components.
+ */
+
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import AppNavigator from './AppNavigator';

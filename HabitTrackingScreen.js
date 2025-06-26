@@ -1,3 +1,30 @@
+/**
+ * HabitTrackingScreen - Daily Habit Management Component
+ * 
+ * This screen allows users to create, track, and manage daily habits across the 8 wellness dimensions.
+ * Users can add new habits, set daily targets, track completion counts, and view their progress.
+ * 
+ * Key Features:
+ * - Create new habits with custom names, targets, and dimensions
+ * - Track habit completion with increment/decrement counters
+ * - Date-based habit management with calendar picker
+ * - Automatic cloning of yesterday's habits to today
+ * - Color-coded habits by wellness dimension
+ * - Push notifications when habit targets are met
+ * - Persistent storage of habit data
+ * 
+ * Data Structure:
+ * - Habits are stored by date in AsyncStorage
+ * - Each habit has an ID, name, target count, dimension, and creation date
+ * - Counts are tracked separately and persist across app sessions
+ * - Habits can be carried forward from previous days
+ * 
+ * Navigation:
+ * - Floating action button to add new habits
+ * - Date picker to view habits from different days
+ * - Navigation to habit summary screen for analytics
+ */
+
 import React, { useState, useEffect } from 'react';
 import { KeyboardAvoidingView, ScrollView, Modal, Animated, Keyboard, TouchableOpacity, TextInput, FlatList, Alert, Platform, UIManager, TouchableWithoutFeedback, StyleSheet, View, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,11 +37,15 @@ import { configureNotifications, sendHabitCompletionNotification } from './notif
 import { Picker } from '@react-native-picker/picker';
 import { getColorForDimension } from './getColorForDimension';
 
+// Enable layout animations on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Helper to format YYYY-MM-DD to 'Month Day, Year'
+/**
+ * Helper function to format date strings from YYYY-MM-DD to 'Month Day, Year'
+ * Used for displaying user-friendly date formats in the UI
+ */
 function formatDateLong(dateString) {
   if (!dateString) return '';
   const [year, month, day] = dateString.split('-');
@@ -23,11 +54,13 @@ function formatDateLong(dateString) {
 }
 
 const HabitTrackingScreen = ({navigation}) => {
+  // State for date selection and management
   const [selectedDate, setSelectedDate] = useState(getUniversalTime().fullDate);
   useEffect(() => {
     setSelectedDate(getUniversalTime().fullDate);
   }, []);
 
+  // State for habit data and UI management
   const [habits, setHabits] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newHabitDropdown, setNewHabitDropdown] = useState(false);
@@ -41,8 +74,11 @@ const HabitTrackingScreen = ({navigation}) => {
 
   const formatDate = (date) => date;
 
-
-  
+  /**
+   * Loads habits for a specific date from AsyncStorage
+   * Retrieves both habit definitions and their completion counts
+   * Automatically clones yesterday's habits if today has no habits
+   */
   const loadHabitsForDate = async (date) => {
     const dateKey = formatDate(date);
     const storedHabits = await AsyncStorage.getItem('allHabits');
@@ -56,17 +92,18 @@ const HabitTrackingScreen = ({navigation}) => {
     setAllHabits(parsedHabits);
   
     if (dateKey === getUniversalTime().fullDate) {
-      await cloneYesterdayHabits();  // 🎯 Clone yesterday's habits if missing
+      await cloneYesterdayHabits();  // Clone yesterday's habits if missing
     }
   };
 
+  // Initialize notifications and load initial data
   useEffect(() => {
-    configureNotifications(); // ✅ Initialize notifications on app load
+    configureNotifications(); // Initialize notifications on app load
     loadHabitsForDate(selectedDate);
   }, []);
 
+  // Load dimension colors for visual distinction
   useEffect(() => {
-    // Load all dimension colors on mount
     const loadColors = async () => {
       const dims = ['Physical', 'Mental', 'Environmental', 'Financial', 'Intellectual', 'Occupational', 'Social', 'Spiritual'];
       const colors = {};
@@ -78,15 +115,20 @@ const HabitTrackingScreen = ({navigation}) => {
     loadColors();
   }, []);
 
+  // Reset to today's date when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       const today = getUniversalTime().fullDate;
-      setSelectedDate(today);        // 🔄 Reset the date
-      setShowDatePicker(false);      // 🔥 Reset calendar popup state
-      loadHabitsForDate(today);      // 🔁 Reload habits for today
+      setSelectedDate(today);        // Reset the date
+      setShowDatePicker(false);      // Reset calendar popup state
+      loadHabitsForDate(today);      // Reload habits for today
     }, [])
   );
 
+  /**
+   * Saves habit data to AsyncStorage
+   * Updates both habit definitions and completion counts for the selected date
+   */
   const saveHabits = async (date, habitsData, countsData) => {
     const dateKey = formatDate(date);
     const updatedHabits = {
@@ -97,6 +139,11 @@ const HabitTrackingScreen = ({navigation}) => {
     setAllHabits(updatedHabits);
   };
 
+  /**
+   * Handles date selection from the date picker
+   * Only allows selection of today or past dates
+   * Reloads habits for the selected date
+   */
   const handleDateChange = (event, date) => {
     setShowDatePicker(false);
     const formatted = date.toISOString().split('T')[0];
@@ -108,6 +155,11 @@ const HabitTrackingScreen = ({navigation}) => {
     }
   };
 
+  /**
+   * Decrements the completion count for a habit
+   * Prevents count from going below 0
+   * Automatically saves changes to storage
+   */
   const decrementCount = (habitId) => {
     setCounts((prev) => {
       const updated = { ...prev, [habitId]: Math.max((prev[habitId] || 0) - 1, 0) };
@@ -116,13 +168,18 @@ const HabitTrackingScreen = ({navigation}) => {
     });
   };
 
+  /**
+   * Increments the completion count for a habit
+   * Sends notification when target is reached
+   * Automatically saves changes to storage
+   */
   const incrementCount = async (habitId) => {
     setCounts((prev) => {
       const updated = { ...prev, [habitId]: (prev[habitId] || 0) + 1 };
       
-      // ✅ Check if the target is met
+      // Check if the target is met
       const habit = habits.find(h => h.id === habitId);
-      if (updated[habitId] === habit.target) { // ✅ Only trigger when reaching the exact target
+      if (updated[habitId] === habit.target) { // Only trigger when reaching the exact target
         sendHabitCompletionNotification(habit.name);
       }
       
@@ -131,6 +188,11 @@ const HabitTrackingScreen = ({navigation}) => {
     });
   };
 
+  /**
+   * Handles manual input of habit completion counts
+   * Filters input to only allow numeric values
+   * Automatically saves changes to storage
+   */
   const handleInputChange = (habitId, value) => {
     const numericValue = value.replace(/[^0-9]/g, '');
     setCounts((prev) => {
@@ -140,6 +202,11 @@ const HabitTrackingScreen = ({navigation}) => {
     });
   };
 
+  /**
+   * Creates a new habit and adds it to the current date
+   * Validates input and creates unique habit ID
+   * Resets form and closes modal on success
+   */
   const addNewHabit = async () => {
     if (!newHabitName.trim() || !newHabitTarget.trim() || isNaN(newHabitTarget) || newHabitTarget < 0) {
       Alert.alert('Invalid Input', 'Ensure valid habit name and target count (non-negative).');
@@ -163,6 +230,10 @@ const HabitTrackingScreen = ({navigation}) => {
     setShowAddModal(false);
   };
 
+  /**
+   * Shows confirmation dialog before deleting a habit
+   * Prevents accidental deletion of habits
+   */
   const confirmDeleteHabit = (habitId) => {
     Alert.alert('Delete Habit', 'Are you sure you want to delete this habit?', [
       { text: 'Cancel', style: 'cancel' },
@@ -172,6 +243,11 @@ const HabitTrackingScreen = ({navigation}) => {
     ]);
   };
 
+  /**
+   * Clones yesterday's habits to today if today has no habits
+   * Creates unique IDs for each cloned habit
+   * Initializes counts to 0 for all cloned habits
+   */
   const cloneYesterdayHabits = async () => {
     const today = getUniversalTime().fullDate;
     const yesterday = new Date(new Date(today).setDate(new Date(today).getDate() - 1))
@@ -184,7 +260,7 @@ const HabitTrackingScreen = ({navigation}) => {
     if (!parsedHabits[today] || parsedHabits[today]?.habits.length === 0) {
       const clonedHabits = yesterdayHabits.map((habit) => ({
         ...habit,
-        id: `${habit.id}-${today}`,  // 🎯 Unique ID per day
+        id: `${habit.id}-${today}`,  // Unique ID per day
         createdOn: today,
       }));
       const countsClone = {};

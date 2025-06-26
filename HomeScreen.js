@@ -1,3 +1,29 @@
+/**
+ * HomeScreen - Main Dashboard Component
+ * 
+ * This is the primary dashboard screen of the U8 wellness tracking app. It serves
+ * as the central hub where users can view their daily progress across all 8 wellness
+ * dimensions and access key features of the app.
+ * 
+ * Key Features:
+ * - Displays wellness dimensions as interactive circular cards
+ * - Shows daily goal and habit counts for each dimension
+ * - Provides quick access to goal planning
+ * - Shows suggested goals that can be added to today's schedule
+ * - Integrates habit tracking data with goal tracking
+ * 
+ * The screen automatically loads and displays:
+ * - Today's scheduled goals and their completion status
+ * - Daily habits and their counts by dimension
+ * - Suggested goals from the preset goal library
+ * - Color-coded dimension cards that grow based on activity level
+ * 
+ * Navigation:
+ * - Tapping dimension cards navigates to detailed dimension view
+ * - "Plan a Goal" button navigates to goal setting screen
+ * - Suggested goals can be added directly to today's schedule
+ */
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,22 +34,35 @@ import { getColorForDimension } from './getColorForDimension';
 import { goals as presetGoals } from './goals';
 
 const HomeScreen = ({ navigation }) => {
+  // State for managing daily goals and their completion status
   const [dailyGoals, setDailyGoals] = useState([]);
+  
+  // State for dimension data including counts and colors
   const [dimensionData, setDimensionData] = useState([]);
   const [dimensionColors, setDimensionColors] = useState({});
+  
+  // State for today's date and suggested goals
   const [todayDate, setTodayDate] = useState(getUniversalTime().fullDate);
   const [suggestedGoals, setSuggestedGoals] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [addedGoals, setAddedGoals] = useState({});
   const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
+  
+  // State for habit tracking integration
   const [habitCounts, setHabitCounts] = useState({});
   const [habitsByDimension, setHabitsByDimension] = useState({});
 
+  /**
+   * Loads today's habits from AsyncStorage and processes them by dimension
+   * Counts habits per dimension and stores habit names for display
+   * Calls loadGoals with the updated counts to refresh the display
+   */
   const loadHabits = async () => {
     const today = getUniversalTime().fullDate;
     const storedHabits = await AsyncStorage.getItem('allHabits');
     const parsedHabits = storedHabits ? JSON.parse(storedHabits) : {};
     const todayHabits = parsedHabits[today]?.habits || [];
+    
     // Count habits per dimension and store habit names
     const counts = {};
     const byDimension = {};
@@ -36,10 +75,16 @@ const HomeScreen = ({ navigation }) => {
     });
     setHabitCounts(counts);
     setHabitsByDimension(byDimension);
+    
     // Call loadGoals with the new counts
     loadGoals(counts);
   };
 
+  /**
+   * Loads today's goals from AsyncStorage and combines them with habit data
+   * Creates dimension data objects that include both goal and habit counts
+   * This provides a unified view of all daily activities by dimension
+   */
   const loadGoals = async (countsArg) => {
     const todayDate = getUniversalTime().fullDate;
     const goals = await AsyncStorage.getItem(todayDate);
@@ -66,12 +111,17 @@ const HomeScreen = ({ navigation }) => {
     setDimensionData(dimensions);
   };
 
+  /**
+   * Loads color schemes for each wellness dimension
+   * Colors are used to visually distinguish different dimensions
+   * and create a cohesive visual experience
+   */
   const loadDimensionColors = async () => {
     try {
       const storedPresetGoals = await AsyncStorage.getItem('presetGoals');
       const presetGoalsParsed = storedPresetGoals ? JSON.parse(storedPresetGoals) : {};
   
-      const allDimensions = Object.keys(presetGoalsParsed); // ✅ Get all dimension names
+      const allDimensions = Object.keys(presetGoalsParsed);
       const colors = {};
   
       for (const dimension of allDimensions) {
@@ -84,11 +134,16 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  /**
+   * Loads suggested goals that haven't been scheduled for today
+   * Randomly selects up to 3 goals from the preset goal library
+   * Provides users with quick options to add to their daily schedule
+   */
   const loadSuggestedGoals = async () => {
     let allGoalsData = await AsyncStorage.getItem('presetGoals');
     let allGoals;
   
-    // 🌟 Fallback to default goals if not found in AsyncStorage
+    // Fallback to default goals if not found in AsyncStorage
     if (!allGoalsData) {
       await AsyncStorage.setItem('presetGoals', JSON.stringify(presetGoals));
       allGoals = presetGoals;
@@ -118,11 +173,20 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  /**
+   * Refreshes the suggested goals list
+   * Clears previously added goals and loads new suggestions
+   */
   const refreshSuggestions = () => {
     setAddedGoals({});
     loadSuggestedGoals();
   };
 
+  /**
+   * Adds a suggested goal to today's schedule
+   * Saves the goal to AsyncStorage and updates the UI
+   * Refreshes the home screen to show the new goal
+   */
   const scheduleSuggestedGoal = async (goal) => {
     const todayDate = getUniversalTime().fullDate;
     const existingGoals = await AsyncStorage.getItem(todayDate);
@@ -133,24 +197,38 @@ const HomeScreen = ({ navigation }) => {
     setAddedGoals(prev => ({ ...prev, [goal.id]: true }));
     loadGoals(); // Refresh HomeScreen dynamically
   };
+
+  /**
+   * Toggles the expansion of the suggestions section
+   * Uses layout animation for smooth transitions
+   */
   const toggleSuggestions = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
     setSuggestionsExpanded(!suggestionsExpanded);
   };
+
+  // Load data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      loadDimensionColors();    // 🎨 Load all colors first
-      loadHabits();             // 🟦 Load today's habits (calls loadGoals)
-      loadSuggestedGoals();     // 💡 Load suggestions
+      loadDimensionColors();    // Load all colors first
+      loadHabits();             // Load today's habits (calls loadGoals)
+      loadSuggestedGoals();     // Load suggestions
     }, [])
   );
 
+  // Enable layout animations on Android
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
   }, []);
 
+  /**
+   * Renders individual dimension cards
+   * Each card shows the dimension name, count of activities, and visual indicators
+   * Cards grow in size based on the number of activities (goals + habits)
+   * Cards with habits show a star indicator
+   */
   const renderDimensionItem = ({ item }) => {
     const hasHabits = habitsByDimension[item.name] && habitsByDimension[item.name].length > 0;
     return (
@@ -179,6 +257,7 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <ScrollView contentContainerStyle={[styles.container, { flexGrow: 1 }]}>
+      {/* Header section with title and main action button */}
       <View>
         <Text style={styles.header}>Today's Wellness Dimensions</Text>
 
@@ -193,6 +272,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </View>
 
+      {/* Dimension cards display - shows all wellness dimensions with activity counts */}
       {dimensionData.length > 0 ? (
         <View style={{ flexGrow: 1 }}>
           <FlatList
@@ -202,26 +282,27 @@ const HomeScreen = ({ navigation }) => {
             numColumns={2}
             columnWrapperStyle={styles.dimensionRow}
             contentContainerStyle={styles.dimensionList}
-            scrollEnabled={false}   // ✅ Keeps FlatList from scrolling independently
+            scrollEnabled={false}   // Keeps FlatList from scrolling independently
           />
         </View>
       ) : (
         <Text style={styles.noGoalsText}>No goals scheduled for today.</Text>
       )}
 
+      {/* Suggested goals section - expandable list of recommended goals */}
       {showSuggestions && (
         <View style={styles.suggestedContainer}>
           <View style={styles.suggestedHeader}>
             <TouchableOpacity
               style={styles.suggestedHeaderToggle}
-              onPress={toggleSuggestions} // 🔥 Animated toggle
+              onPress={toggleSuggestions} // Animated toggle
             >
               <Text style={styles.suggestedHeaderText}>Suggested Goals</Text>
               <Ionicons
                 name={suggestionsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
                 size={30}
                 color="#00BFFF"
-                style={{ marginLeft: 10 }}  // 🎯 Adds space between text & toggle icon
+                style={{ marginLeft: 10 }}  // Adds space between text & toggle icon
               />
             </TouchableOpacity>
             <TouchableOpacity onPress={refreshSuggestions}>
@@ -255,17 +336,26 @@ const HomeScreen = ({ navigation }) => {
   );
 };
 
+/**
+ * Styles for the HomeScreen component
+ * Defines the visual appearance of all UI elements including:
+ * - Layout containers and spacing
+ * - Dimension cards with dynamic sizing
+ * - Buttons and interactive elements
+ * - Text styling and colors
+ * - Suggested goals section styling
+ */
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,            // ✅ Ensure the ScrollView takes full height
+    flexGrow: 1,            // Ensure the ScrollView takes full height
     paddingTop: 80,
     paddingHorizontal: 20,
     backgroundColor: '#f5f5f5',
   },
   topContainer: {
-    flexDirection: 'row',            // ✅ Side-by-side alignment
-    justifyContent: 'space-between', // ✅ Push buttons to edges
-    alignItems: 'center',            // ✅ Align vertically at the center
+    flexDirection: 'row',            // Side-by-side alignment
+    justifyContent: 'space-between', // Push buttons to edges
+    alignItems: 'center',            // Align vertically at the center
     marginBottom: 20,
   },
   
@@ -299,12 +389,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 60,                     // ✅ Same height as planButtonTop
+    height: 60,                     // Same height as planButtonTop
     paddingVertical: 10,
-    paddingHorizontal: 15,          // ✅ Same padding for alignment
+    paddingHorizontal: 15,          // Same padding for alignment
     backgroundColor: '#E0F7FF',
     borderRadius: 10,
-    width: '48%',                   // ✅ Adjust width for alignment
+    width: '48%',                   // Adjust width for alignment
   },
   
   settingsLabel: {
@@ -316,8 +406,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: 'center', /* ✅ Center the text */
-    width: '100%',       /* ✅ Ensure it spans full width for proper centering */
+    textAlign: 'center', /* Center the text */
+    width: '100%',       /* Ensure it spans full width for proper centering */
   },
   dimensionList: {
     justifyContent: 'center',
@@ -330,9 +420,9 @@ const styles = StyleSheet.create({
   dimensionItem: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: 120,    // ✅ Increased minimum width
-    height: 120,   // ✅ Increased minimum height
-    borderRadius: 60, // ✅ Adjusted for circle shape
+    width: 120,    // Increased minimum width
+    height: 120,   // Increased minimum height
+    borderRadius: 60, // Adjusted for circle shape
     position: 'relative',
   },
   dimensionText: {
@@ -385,20 +475,20 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: '#E8F6FF',
     borderRadius: 10,
-    borderWidth: 2,             // ✅ Add border
-    borderColor: 'black',         // ✅ Make it obvious if hidden
+    borderWidth: 2,             // Add border
+    borderColor: 'black',         // Make it obvious if hidden
   },
   suggestedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
-    gap: 10,                  // 🔥 Adds small spacing between text & icons
+    gap: 10,                  // Adds small spacing between text & icons
   },
   
   suggestedHeaderToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 0,          // 🎯 Reduce space before the refresh button
+    marginRight: 0,          // Reduce space before the refresh button
   },
   suggestedHeaderText: {
     fontSize: 20,
