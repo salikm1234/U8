@@ -166,7 +166,9 @@ const CalendarScreen = ({ navigation }) => {
           )}
           <Button
             title="Add More Goals"
-            onPress={() => navigation.navigate('HomeStack', { screen: 'GoalSelection', params: { date: selectedDate } })}
+            onPress={() => {
+              navigation.navigate('HomeStack', { screen: 'GoalSetting', params: { date: selectedDate } });
+            }}
           />
           <Button title="Reset Goals" onPress={resetGoals} color="red" />
         </View>

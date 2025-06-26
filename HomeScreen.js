@@ -151,22 +151,14 @@ borderRadius: Math.min(120 + item.count * 10, 160) / 2,
   <Text style={styles.header}>Today's Wellness Dimensions</Text>
 
   <View style={styles.topContainer}>
-  <TouchableOpacity
-    style={styles.planButtonTop}
-    onPress={() => navigation.navigate('GoalSelection', { date: getUniversalTime().fullDate })}
-  >
-    <Ionicons name="add-circle" size={40} color="#00BFFF" />
-    <Text style={styles.planButtonText}>Plan</Text>
-  </TouchableOpacity>
-
-  <TouchableOpacity
-    style={styles.settingsButton}
-    onPress={() => navigation.navigate('GoalSetting')}
-  >
-    <Text style={styles.settingsLabel}>Settings</Text>
-    <Ionicons name="settings-outline" size={35} color="#00BFFF" />
-  </TouchableOpacity>
-</View>
+    <TouchableOpacity
+      style={styles.goalsButton}
+      onPress={() => navigation.navigate('GoalSetting', { date: getUniversalTime().fullDate })}
+    >
+      <Ionicons name="add-circle" size={40} color="#00BFFF" />
+      <Text style={styles.goalsButtonText}>Plan a Goal</Text>
+    </TouchableOpacity>
+  </View>
 </View>
 
       {dimensionData.length > 0 ? (
@@ -256,16 +248,30 @@ const styles = StyleSheet.create({
         marginBottom: 20,
       },
       
-      planButtonTop: {
+      goalsButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        height: 60,                     // ✅ Match height with settingsButton
+        height: 60,
         paddingVertical: 10,
         paddingHorizontal: 15,
         backgroundColor: '#E0F7FF',
         borderRadius: 10,
-        width: '48%',                   // ✅ Adjust width so both buttons fit on the same line
+        width: '100%',
+        marginBottom: 20,
+        marginTop: 10,
+        shadowColor: '#00BFFF',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+      
+      goalsButtonText: {
+        fontSize: 20,
+        marginLeft: 15,
+        color: '#00BFFF',
+        fontWeight: 'bold',
       },
       
       settingsButton: {
