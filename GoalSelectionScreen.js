@@ -1,3 +1,5 @@
+// mostly depricated
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, Button, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -338,3 +340,5 @@ const styles = StyleSheet.create({
 });
 
 export default GoalSelectionScreen;
+
+
