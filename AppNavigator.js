@@ -6,12 +6,11 @@
  * to organize the app's screens into logical groups.
  * 
  * Navigation Structure:
- * - Bottom Tab Navigator (5 main sections)
- *   - Routines: Create and manage wellness routines
- *   - Habits: Track daily habits and view summaries
+ * - Bottom Tab Navigator (4 main sections)
  *   - Home: Main dashboard and goal management
  *   - Calendar: Calendar view of activities
- *   - GPT: AI-powered wellness assistant
+ *   - Habits: Track daily habits and view summaries
+ *   - Routines: Create and manage wellness routines
  * 
  * Each tab contains stack navigators that allow navigation between related screens
  * within that section. This provides a clean, organized user experience.
@@ -102,29 +101,15 @@ function RoutineStack() {
 
 /**
  * Main App Navigator
- * Sets up the bottom tab navigation with 5 main sections.
+ * Sets up the bottom tab navigation with 4 main sections.
  * Each tab has a custom icon and contains its respective stack navigator.
  * The HomeStack is set as the initial route when the app launches.
+ * 
+ * Tab Order: Home, Calendar, Habits, Routines
  */
 export default function AppNavigator() {
     return (
       <Tab.Navigator initialRouteName="HomeStack" screenOptions={{ tabBarShowLabel: false }}>
-        <Tab.Screen
-          name="Routines"
-          component={RoutineStack}
-          options={{
-            headerShown: false,
-            tabBarIcon: ({ color, size }) => <Ionicons name={getRoutineIcon()} color={color} size={size} />,
-          }}
-        />
-        <Tab.Screen
-          name="Habits"
-          component={HabitStack}
-          options={{
-            headerShown: false,
-            tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart" color={color} size={size} />,
-          }}
-        />
         <Tab.Screen
           name="HomeStack"
           component={HomeStack}
@@ -141,10 +126,19 @@ export default function AppNavigator() {
           }}
         />
         <Tab.Screen
-          name="GPT"
-          component={GptPrompterScreen}
+          name="Habits"
+          component={HabitStack}
           options={{
-            tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles" color={color} size={size} />,
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart" color={color} size={size} />,
+          }}
+        />
+        <Tab.Screen
+          name="Routines"
+          component={RoutineStack}
+          options={{
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => <Ionicons name={getRoutineIcon()} color={color} size={size} />,
           }}
         />
       </Tab.Navigator>

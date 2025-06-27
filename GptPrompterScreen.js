@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getUniversalTime } from './dateUtils';
+import Constants from 'expo-constants';
 
 const GptPrompterScreen = () => {
   const [userInput, setUserInput] = useState('');
@@ -48,7 +49,13 @@ const GptPrompterScreen = () => {
   };
 
   const getGptResponse = async (conversation) => {
-    const apiKey = 'sk-HQTAw5Uo53Ju3trxAWuLcrlLz8s2BSlDnA7Q-pbaONT3BlbkFJ0Tc3zDrimeBw-1Uor3_AQlkTWfYuOYyHic3AGO0_IA';  // Replace with your actual API key
+    // Get API key from environment variables
+    const apiKey = Constants.expoConfig?.extra?.openaiApiKey;
+    
+    if (!apiKey) {
+      console.error('OpenAI API key not found in environment variables');
+      return 'Configuration error: API key not found. Please check your environment setup.';
+    }
 
     setLoading(true);  // Show loading animation while GPT is thinking
     try {
