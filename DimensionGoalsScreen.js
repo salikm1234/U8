@@ -5,8 +5,10 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getUniversalTime } from './dateUtils';
 import { getColorForDimension } from './getColorForDimension';
+import { useTheme } from './ThemeContext';
 
 const DimensionGoalsScreen = ({ route, navigation }) => {
+  const { theme, colorScheme } = useTheme();
   const { dimensionName } = route.params;
   const [dimensionColor, setDimensionColor] = useState('#D3D3D3');
   const [goals, setGoals] = useState([]);
@@ -23,14 +25,14 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
   // Dimension descriptions
   const getDimensionDescription = (dimension) => {
     const descriptions = {
-      Physical: "Nurture your body with movement, nourishment, and rest. Every step, every breath, every moment of care builds your physical foundation.",
-      Mental: "Cultivate inner peace and mental clarity. Through mindfulness and learning, discover the strength and wisdom within your mind.",
-      Environmental: "Connect with the world around you. Small actions create ripples of positive change for our planet and your surroundings.",
-      Financial: "Build a secure and abundant future. Smart choices today create freedom and peace of mind for tomorrow.",
-      Intellectual: "Feed your curiosity and expand your horizons. Every new idea, skill, or insight adds richness to your life's journey.",
-      Occupational: "Grow your professional path with purpose. Find meaning in your work and build the career that fulfills your dreams.",
-      Social: "Cherish the connections that make life beautiful. Strengthen bonds with loved ones and build meaningful relationships.",
-      Spiritual: "Explore the deeper questions of life and find your unique path. Connect with your values and discover what truly matters to you."
+      Physical: "Taking care of your body through exercise and healthy habits. This includes nutrition, sleep, and overall fitness.",
+      Mental: "Managing your emotional wellbeing and mental health. Developing resilience and coping with life's challenges.",
+      Environmental: "Creating spaces that support your wellbeing. Organizing your home and work areas for health and productivity.",
+      Financial: "Managing money wisely for security and goals. Building financial habits that reduce stress and create opportunities.",
+      Intellectual: "Keeping your mind active through learning and creativity. Pursuing knowledge and skills that interest you.",
+      Occupational: "Finding satisfaction and growth in your work. Balancing career ambitions with personal wellbeing.",
+      Social: "Building meaningful relationships and connections. Nurturing bonds with family, friends, and community.",
+      Spiritual: "Understanding what gives your life meaning. Connecting with your values and sense of purpose."
     };
     return descriptions[dimension] || "Embrace this dimension of your wellness journey with intention and care.";
   };
@@ -251,7 +253,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
       const isComplete = item.count >= item.target;
       return (
         <View style={{
-          backgroundColor: '#fff',
+          backgroundColor: theme.cardBackground,
           borderRadius: 14,
           marginVertical: 6,
           padding: 16,
@@ -265,12 +267,12 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
           elevation: 2,
         }}>
           <Ionicons name="star" size={18} color={dimensionColor} style={{ marginRight: 8 }} />
-          <Text style={{ fontSize: 17, fontWeight: 'bold', color: isComplete ? '#888' : '#222', flex: 1, textDecorationLine: isComplete ? 'line-through' : 'none' }}>{item.name}</Text>
-          <TouchableOpacity onPress={() => decrementHabitCount(item.id)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center', marginRight: 4 }}>
-            <Ionicons name="remove" size={18} color="#888" />
+          <Text style={{ fontSize: 17, fontWeight: 'bold', color: isComplete ? theme.textSecondary : theme.text, flex: 1, textDecorationLine: isComplete ? 'line-through' : 'none' }}>{item.name}</Text>
+          <TouchableOpacity onPress={() => decrementHabitCount(item.id)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.secondaryButton, alignItems: 'center', justifyContent: 'center', marginRight: 4 }}>
+            <Ionicons name="remove" size={18} color={theme.textSecondary} />
           </TouchableOpacity>
           <View style={{ alignItems: 'center', minWidth: 56 }}>
-            <Text style={{ fontSize: 16 }}>{item.count || 0} / {item.target}</Text>
+            <Text style={{ fontSize: 16, color: theme.text }}>{item.count || 0} / {item.target}</Text>
           </View>
           <TouchableOpacity onPress={() => incrementHabitCount(item.id)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: dimensionColor, alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>
             <Ionicons name="add" size={18} color="#fff" />
@@ -280,11 +282,13 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
     }
   };
 
+  const styles = createStyles(theme);
+  
   return (
-    <View style={[styles.container, { backgroundColor: '#f5f5f5' }]}>
+    <View style={styles.container}>
       <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={30} color="#000" />
+          <Ionicons name="arrow-back" size={28} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerText}>Today's {dimensionName} Goals & Habits</Text>
       </View>
@@ -302,6 +306,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         ListEmptyComponent={<Text style={styles.noGoalsText}>No goals or habits for this dimension today.</Text>}
+        scrollEnabled={false}
       />
 
       {/* Modal for Counter */}
@@ -339,6 +344,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
               <TextInput
                 style={styles.textInput}
                 placeholder="Write your notes here..."
+                placeholderTextColor={theme.placeholderText}
                 multiline
                 value={noteText}
                 onChangeText={(text) => setNoteText(text)}
@@ -355,11 +361,12 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    marginTop: 50
+    marginTop: 50,
+    backgroundColor: theme.background,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -370,6 +377,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginLeft: 15,
+    color: theme.text,
   },
   goalItem: {
     flexDirection: 'row',
@@ -391,7 +399,7 @@ const styles = StyleSheet.create({
   },
   counterText: {
     fontSize: 20,
-    color: '#000', // Changed from '#fff' to '#000' for visibility
+    color: theme.text, // Use theme text color for visibility
     marginVertical: 10,
   },
   noGoalsText: {
@@ -407,7 +415,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.cardBackground,
     padding: 20,
     borderRadius: 10,
     width: '80%',
@@ -417,10 +425,11 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 10,
+    color: theme.text,
   },
   counterButton: {
     padding: 10,
-    backgroundColor: '#00BFFF',
+    backgroundColor: theme.primaryButtonText,
     borderRadius: 5,
     marginVertical: 10,
   },
@@ -431,7 +440,7 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 10,
     borderRadius: 5,
-    backgroundColor: '#00BFFF',
+    backgroundColor: theme.primaryButtonText,
     marginTop: 20,
   },
   closeButtonText: {
@@ -440,14 +449,16 @@ const styles = StyleSheet.create({
   },
   textInput: {
     height: 150,
-    borderColor: 'gray',
+    borderColor: theme.border,
     borderWidth: 1,
     padding: 10,
     width: '100%',
     marginBottom: 20,
+    color: theme.text,
+    backgroundColor: theme.inputBackground,
   },
   descriptionContainer: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.secondaryButton,
     padding: 16,
     borderRadius: 12,
     marginBottom: 20,
@@ -460,7 +471,7 @@ const styles = StyleSheet.create({
   },
   descriptionText: {
     fontSize: 15,
-    color: '#5A6C7D',
+    color: theme.textSecondary,
     lineHeight: 22,
     fontStyle: 'italic',
   },

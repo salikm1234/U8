@@ -5,8 +5,10 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getUniversalTime } from './dateUtils';
 import { getColorForDimension } from './getColorForDimension';
+import { useTheme } from './ThemeContext';
 
 const RoutineTrackingScreen = ({ navigation }) => {
+  const { theme } = useTheme();
   const [routines, setRoutines] = useState([]);
   const [progress, setProgress] = useState({});
   const [dimensionColors, setDimensionColors] = useState({});
@@ -81,6 +83,8 @@ useFocusEffect(
     navigation.navigate('RoutineActionScreen', { routine });
   };
 
+  const styles = createStyles(theme);
+  
   return (
     <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.headerContainer}>
@@ -124,10 +128,10 @@ useFocusEffect(
               </View>
               <View style={styles.routineHeader}>
                 <View style={styles.iconContainer}>
-                  <Ionicons name={routine.icon || 'star'} size={32} color="#4CAF50" />
+                  <Ionicons name={routine.icon || 'star'} size={32} color={theme.primaryButtonText} />
                 </View>
                 <TouchableOpacity onPress={() => handleEditRoutine(routine)}>
-                  <Ionicons name="settings-outline" size={24} color="#6C757D" />
+                  <Ionicons name="settings-outline" size={24} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
               <Text style={styles.routineName}>{routine.name}</Text>
@@ -152,69 +156,79 @@ useFocusEffect(
         style={[styles.addButton, { marginTop: 20 }]}
         onPress={() => navigation.navigate('RoutineEditorScreen')}
       >
-        <Ionicons name="add-circle" size={24} color="#fff" />
+        <Ionicons name="add-circle" size={24} color={theme.primaryButtonText} />
         <Text style={styles.addButtonText}>Add New Routine</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { padding: 20, marginTop: 40, flexGrow: 0 },
+const createStyles = (theme) => StyleSheet.create({
+  container: { 
+    padding: 20, 
+    marginTop: 40, 
+    flexGrow: 0, 
+    backgroundColor: theme.background 
+  },
   emptyContainer: { 
     alignItems: 'center', 
     justifyContent: 'center', 
     paddingVertical: 40,
-    backgroundColor: '#fff',
+    backgroundColor: theme.cardBackground,
     borderRadius: 16,
     marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   emptyText: { 
     fontSize: 18, 
-    color: '#6C757D',
+    color: theme.textSecondary,
     fontWeight: '500'
   },
   addButton: { 
-    backgroundColor: '#4CAF50', 
+    backgroundColor: theme.primaryButton, 
     padding: 16, 
-    borderRadius: 12,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   addButtonText: { 
-    color: '#fff', 
-    fontWeight: 'bold',
+    color: theme.primaryButtonText, 
+    fontWeight: '600',
     marginLeft: 8,
-    fontSize: 16
+    fontSize: 16,
+    letterSpacing: 0.2,
   },
   routineContainer: { 
     padding: 20, 
     borderRadius: 16, 
     marginVertical: 10,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
+    backgroundColor: theme.cardBackground,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: theme.border,
   },
   segmentedColorBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
     borderRadius: 8,
     overflow: 'hidden',
     minHeight: 12,
@@ -229,48 +243,53 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#E8F5E8',
+    backgroundColor: theme.primaryButton,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   routineName: { 
     fontSize: 22, 
-    fontWeight: 'bold', 
+    fontWeight: '700', 
     marginVertical: 10,
-    color: '#333',
+    color: theme.text,
+    letterSpacing: 0.3,
   },
   routineDuration: { 
     fontSize: 16,
-    color: '#6C757D',
+    color: theme.textSecondary,
     marginBottom: 12,
+    fontWeight: '500',
   },
   progressContainer: {
     marginTop: 8,
   },
   progressText: {
     fontSize: 14,
-    color: '#4CAF50',
+    color: theme.success,
     fontWeight: '600',
     marginBottom: 6,
   },
   progressBar: { 
     height: 8, 
-    backgroundColor: '#4CAF50', 
+    backgroundColor: theme.success, 
     borderRadius: 4,
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 20,  // Space below heading
+    marginBottom: 20,
   },
   titleText: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: theme.text,
+    letterSpacing: 0.5,
   },
 });
 

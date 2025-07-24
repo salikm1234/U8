@@ -17,13 +17,38 @@
  */
 
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import AppNavigator from './AppNavigator';
+import { ThemeProvider, useTheme } from './ThemeContext';
+
+function ThemedApp() {
+  const { theme, colorScheme } = useTheme();
+  
+  const navigationTheme = {
+    ...DefaultTheme,
+    dark: colorScheme === 'dark',
+    colors: {
+      ...DefaultTheme.colors,
+      primary: theme.primaryButtonText,
+      background: theme.background,
+      card: theme.tabBarBackground,
+      text: theme.text,
+      border: theme.border,
+      notification: theme.primaryButtonText,
+    },
+  };
+  
+  return (
+    <NavigationContainer theme={navigationTheme}>
+      <AppNavigator />
+    </NavigationContainer>
+  );
+}
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <AppNavigator />
-    </NavigationContainer>
+    <ThemeProvider>
+      <ThemedApp />
+    </ThemeProvider>
   );
 }

@@ -3,8 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Keyboa
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getUniversalTime } from './dateUtils';
 import Constants from 'expo-constants';
+import { useTheme } from './ThemeContext';
 
 const GptPrompterScreen = () => {
+  const { theme } = useTheme();
   const [userInput, setUserInput] = useState('');
   const [conversation, setConversation] = useState([]);
   const [loading, setLoading] = useState(false); // Loading state for GPT thinking
@@ -96,13 +98,15 @@ const GptPrompterScreen = () => {
     setConversation(prev => [...prev, { text: gptResponse, isUser: false }]);
   };
 
+  const styles = createStyles(theme);
+  
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
       <View style={styles.mainContent}>
         <ScrollView style={styles.conversationContainer} contentContainerStyle={{ paddingBottom: 80 }}>
           {conversation.length === 0 && (
             <View style={styles.welcomeMessage}>
-              <Ionicons name="chatbubbles-outline" size={60} color="#00BFFF" />
+              <Ionicons name="chatbubbles-outline" size={60} color={theme.primaryButtonText} />
               <Text style={styles.welcomeText}>Start a conversation with your AI wellness assistant!</Text>
               <Text style={styles.welcomeSubtext}>Ask about goal planning, wellness tips, or get personalized advice.</Text>
             </View>
@@ -115,25 +119,25 @@ const GptPrompterScreen = () => {
           ))}
 
           {/* Show loading animation when GPT is thinking */}
-          {loading && <ActivityIndicator size="large" color="#00BFFF" />}
+          {loading && <ActivityIndicator size="large" color={theme.primaryButtonText} />}
         </ScrollView>
 
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
             placeholder="Enter your long-term goal..."
-            placeholderTextColor="#888"
+            placeholderTextColor={theme.placeholderText}
             value={userInput}
             onChangeText={setUserInput}
             multiline
           />
           {conversation.length > 0 && (
             <TouchableOpacity style={styles.clearButton} onPress={clearChat}>
-              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+              <Ionicons name="trash-outline" size={20} color={theme.error} />
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-            <Ionicons name="send" size={24} color="#fff" />
+            <Ionicons name="send" size={24} color={theme.background} />
           </TouchableOpacity>
         </View>
       </View>
@@ -141,15 +145,15 @@ const GptPrompterScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.background,
     marginTop: 40,
   },
   mainContent: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.background,
   },
   conversationContainer: {
     flex: 1,
@@ -164,14 +168,14 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.text,
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 10,
   },
   welcomeSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: theme.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -182,11 +186,11 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   userBubble: {
-    backgroundColor: '#00BFFF',
+    backgroundColor: theme.primaryButtonText,
     alignSelf: 'flex-end',
   },
   gptBubble: {
-    backgroundColor: '#EAEAEA',
+    backgroundColor: theme.secondaryButton,
     alignSelf: 'flex-start',
   },
   userText: {
@@ -194,7 +198,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   gptText: {
-    color: '#333',
+    color: theme.text,
     fontSize: 16,
   },
   inputContainer: {
@@ -202,28 +206,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     borderTopWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderColor: theme.border,
+    backgroundColor: theme.cardBackground,
   },
   input: {
     flex: 1,
     borderRadius: 25,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: theme.secondaryButton,
     fontSize: 16,
-    color: '#333',
+    color: theme.text,
     maxHeight: 100,
   },
   clearButton: {
     marginLeft: 8,
     padding: 8,
     borderRadius: 20,
-    backgroundColor: '#FFF5F5',
+    backgroundColor: theme.cardBackground,
   },
   sendButton: {
     marginLeft: 8,
-    backgroundColor: '#00BFFF',
+    backgroundColor: theme.primaryButtonText,
     borderRadius: 50,
     padding: 10,
   },

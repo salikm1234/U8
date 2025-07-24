@@ -25,15 +25,70 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getUniversalTime } from './dateUtils';
 import { getColorForDimension } from './getColorForDimension';
 import { goals as presetGoals } from './goals';
+import { useTheme } from './ThemeContext';
+import RingChart from './RingChart';
 
 const HomeScreen = ({ navigation }) => {
+  const { theme, colorScheme } = useTheme();
+  
+  // Function to get display name for dimensions (shortened for long names)
+  const getDimensionDisplayName = (name) => {
+    if (name === 'Environmental') return 'Environment';
+    if (name === 'Occupational') return 'Occupation';
+    return name;
+  };
+  
+  // Function to adjust color for better contrast on badge
+  const getContrastColor = (color) => {
+    if (!color) return theme.background;
+    
+    // In dark mode (white badge), darken light colors
+    if (colorScheme === 'dark') {
+      // Convert hex to RGB
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      
+      // Calculate luminance
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      
+      // If color is too light, darken it
+      if (luminance > 0.6) {
+        const factor = 0.4; // Darken by 60%
+        const newR = Math.floor(r * factor);
+        const newG = Math.floor(g * factor);
+        const newB = Math.floor(b * factor);
+        return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+      }
+    }
+    // In light mode (black badge), lighten dark colors
+    else {
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      
+      // Calculate luminance
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      
+      // If color is too dark, lighten it
+      if (luminance < 0.3) {
+        const factor = 2.5; // Lighten significantly
+        const newR = Math.min(255, Math.floor(r * factor));
+        const newG = Math.min(255, Math.floor(g * factor));
+        const newB = Math.min(255, Math.floor(b * factor));
+        return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+      }
+    }
+    
+    return color;
+  };
   // State for managing daily goals and their completion status
   const [dailyGoals, setDailyGoals] = useState([]);
   
@@ -244,9 +299,9 @@ const HomeScreen = ({ navigation }) => {
         ]}
         onPress={() => navigation.navigate('DimensionGoalsScreen', { dimensionName: item.name })}
       >
-        <Text style={styles.dimensionText}>{item.name}</Text>
+        <Text style={styles.dimensionText}>{getDimensionDisplayName(item.name)}</Text>
         <View style={styles.badge}>
-          <Text style={[styles.badgeText, { color: dimensionColors[item.name] || '#000', marginRight: hasHabits ? 2 : 0 }]}>{item.count}</Text>
+          <Text style={[styles.badgeText, { color: getContrastColor(dimensionColors[item.name]) || theme.background, marginRight: hasHabits ? 2 : 0 }]}>{item.count}</Text>
           {hasHabits && (
             <Ionicons name="star" size={16} color="#FFD700" />
           )}
@@ -255,6 +310,8 @@ const HomeScreen = ({ navigation }) => {
     );
   };
 
+  const styles = createStyles(theme);
+  
   return (
     <ScrollView contentContainerStyle={[styles.container, { flexGrow: 1 }]}>
       {/* Header section with title and main action button */}
@@ -266,24 +323,36 @@ const HomeScreen = ({ navigation }) => {
             style={styles.goalsButton}
             onPress={() => navigation.navigate('GoalSetting', { date: getUniversalTime().fullDate })}
           >
-            <Ionicons name="add-circle" size={40} color="#00BFFF" />
+            <Ionicons name="add-circle" size={40} color={theme.primaryButtonText} />
             <Text style={styles.goalsButtonText}>Plan a Goal</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Dimension cards display - shows all wellness dimensions with activity counts */}
+      {/* Ring chart display - shows wellness dimensions with activity counts */}
       {dimensionData.length > 0 ? (
-        <View style={{ flexGrow: 1 }}>
-          <FlatList
-            data={dimensionData}
-            renderItem={renderDimensionItem}
-            keyExtractor={(item) => item.name}
-            numColumns={2}
-            columnWrapperStyle={styles.dimensionRow}
-            contentContainerStyle={styles.dimensionList}
-            scrollEnabled={false}   // Keeps FlatList from scrolling independently
+        <View style={styles.chartContainer}>
+          <RingChart
+            data={dimensionData.filter(d => d.count > 0).map(d => ({
+              ...d,
+              color: dimensionColors[d.name] || '#D3D3D3',
+              hasHabits: habitsByDimension[d.name] && habitsByDimension[d.name].length > 0
+            }))}
+            onSlicePress={(item) => navigation.navigate('DimensionGoalsScreen', { dimensionName: item.name })}
+            size={280}
+            innerRadius={85}
+            outerRadius={120}
           />
+          
+          {/* Color key/legend */}
+          <View style={styles.legendContainer}>
+            {dimensionData.filter(d => d.count > 0).map((dimension) => (
+              <View key={dimension.name} style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: dimensionColors[dimension.name] || '#D3D3D3' }]} />
+                <Text style={styles.legendText}>{getDimensionDisplayName(dimension.name)}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       ) : (
         <Text style={styles.noGoalsText}>No goals scheduled for today.</Text>
@@ -301,12 +370,12 @@ const HomeScreen = ({ navigation }) => {
               <Ionicons
                 name={suggestionsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
                 size={30}
-                color="#00BFFF"
+                color={theme.primaryButtonText}
                 style={{ marginLeft: 10 }}  // Adds space between text & toggle icon
               />
             </TouchableOpacity>
             <TouchableOpacity onPress={refreshSuggestions}>
-              <Ionicons name="refresh-circle" size={30} color="#00BFFF" />
+              <Ionicons name="refresh-circle" size={30} color={theme.primaryButtonText} />
             </TouchableOpacity>
           </View>
           {suggestionsExpanded && suggestedGoals.map((goal) => (
@@ -321,11 +390,12 @@ const HomeScreen = ({ navigation }) => {
               <TouchableOpacity
                 onPress={() => scheduleSuggestedGoal(goal)}
                 disabled={addedGoals[goal.id]}
+                style={{ minWidth: 30, alignItems: 'center' }}
               >
                 <Ionicons
                   name={addedGoals[goal.id] ? "checkmark-circle-outline" : "add-circle-outline"}
                   size={30}
-                  color={addedGoals[goal.id] ? "green" : "#fff"}
+                  color={addedGoals[goal.id] ? theme.success : "#fff"}
                 />
               </TouchableOpacity>
             </View>
@@ -345,12 +415,12 @@ const HomeScreen = ({ navigation }) => {
  * - Text styling and colors
  * - Suggested goals section styling
  */
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flexGrow: 1,            // Ensure the ScrollView takes full height
     paddingTop: 80,
     paddingHorizontal: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.background,
   },
   topContainer: {
     flexDirection: 'row',            // Side-by-side alignment
@@ -363,51 +433,97 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 60,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    backgroundColor: '#E0F7FF',
-    borderRadius: 10,
+    height: 64,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: theme.primaryButton,
+    borderRadius: 16,
     width: '100%',
     marginBottom: 20,
     marginTop: 10,
-    shadowColor: '#00BFFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   
   goalsButtonText: {
-    fontSize: 20,
-    marginLeft: 15,
-    color: '#00BFFF',
-    fontWeight: 'bold',
+    fontSize: 18,
+    marginLeft: 12,
+    color: theme.primaryButtonText,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  
+  chartContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 30,
+  },
+  
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingHorizontal: 20,
+  },
+  
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 10,
+    marginVertical: 5,
+  },
+  
+  legendColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  
+  legendText: {
+    fontSize: 14,
+    color: theme.text,
+    fontWeight: '500',
   },
   
   settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 60,                     // Same height as planButtonTop
-    paddingVertical: 10,
-    paddingHorizontal: 15,          // Same padding for alignment
-    backgroundColor: '#E0F7FF',
-    borderRadius: 10,
-    width: '48%',                   // Adjust width for alignment
+    height: 56,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: theme.secondaryButton,
+    borderRadius: 16,
+    width: '48%',
+    borderWidth: 1,
+    borderColor: theme.border,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   
   settingsLabel: {
     fontSize: 18,
-    color: '#00BFFF',
+    color: theme.primaryButtonText,
     marginRight: 5,
   },
   header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center', /* Center the text */
-    width: '100%',       /* Ensure it spans full width for proper centering */
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 24,
+    textAlign: 'center',
+    width: '100%',
+    color: theme.text,
+    letterSpacing: 0.5,
   },
   dimensionList: {
     justifyContent: 'center',
@@ -420,37 +536,56 @@ const styles = StyleSheet.create({
   dimensionItem: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: 120,    // Increased minimum width
-    height: 120,   // Increased minimum height
-    borderRadius: 60, // Adjusted for circle shape
+    width: 130,
+    height: 130,
+    borderRadius: 20,
     position: 'relative',
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   dimensionText: {
     fontSize: 16,
-    color: '#fff',
+    color: '#FFFFFF',
     textAlign: 'center',
+    fontWeight: '500',
+    // textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    // textShadowOffset: { width: 0, height: 1 },
+    // textShadowRadius: 2,
   },
   badge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: 'black',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    top: -2,
+    right: -2,
+    backgroundColor: theme.text,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
+    // borderWidth: 2,
+    // borderColor: theme.background,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   badgeText: {
-    fontWeight: 'bold',
-    fontSize: 14,
+    fontWeight: '700',
+    fontSize: 13,
+    color: theme.background,
   },
   noGoalsText: {
     textAlign: 'center',
     marginTop: 100,
     fontSize: 18,
-    color: 'gray',
+    color: theme.textSecondary,
   },
   planButton: {
     flexDirection: 'row',
@@ -461,7 +596,7 @@ const styles = StyleSheet.create({
   planButtonText: {
     fontSize: 18,
     marginLeft: 10,
-    color: '#00BFFF',
+    color: theme.primaryButtonText,
   },
   topButtonsContainer: {
     flexDirection: 'row',
@@ -472,11 +607,16 @@ const styles = StyleSheet.create({
 
   suggestedContainer: {
     marginTop: 30,
-    padding: 15,
-    backgroundColor: '#E8F6FF',
-    borderRadius: 10,
-    borderWidth: 2,             // Add border
-    borderColor: 'black',         // Make it obvious if hidden
+    padding: 20,
+    backgroundColor: theme.suggestedContainer,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   suggestedHeader: {
     flexDirection: 'row',
@@ -491,8 +631,10 @@ const styles = StyleSheet.create({
     marginRight: 0,          // Reduce space before the refresh button
   },
   suggestedHeaderText: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 19,
+    fontWeight: '600',
+    color: theme.text,
+    letterSpacing: 0.2,
   },
   suggestedGoalItem: {
     flexDirection: 'row',
@@ -504,7 +646,10 @@ const styles = StyleSheet.create({
   },
   goalText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    // fontWeight: 'bold',
+    color: '#000',
+    flex: 1,
+    marginRight: 10,
   },
 });
 

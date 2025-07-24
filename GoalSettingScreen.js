@@ -8,8 +8,10 @@ import { useFocusEffect, useRoute, useNavigation } from '@react-navigation/nativ
 import { goals as presetGoals } from './goals'; // Assuming you have a goals.js file with default preset goals
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Svg, { Circle } from 'react-native-svg';
+import { useTheme } from './ThemeContext';
 
 const GoalSettingsScreen = () => {
+  const { theme, colorScheme } = useTheme();
   const [selectedDimension, setSelectedDimension] = useState('Physical');
   const [customGoalText, setCustomGoalText] = useState('');
   const [customGoals, setCustomGoals] = useState({});
@@ -300,9 +302,9 @@ const GoalSettingsScreen = () => {
     <View
       key={goal.id}
       onLayout={e => { goalPositions.current[goal.id] = e.nativeEvent.layout.y; }}
-      style={{ borderRadius: 24, marginBottom: 14, backgroundColor: '#fff', padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', width: '100%' }}
+      style={{ borderRadius: 24, marginBottom: 14, backgroundColor: theme.cardBackground, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', width: '100%' }}
     >
-      <Text style={{ fontSize: 18, marginBottom: 12 }}>{goal.name}</Text>
+      <Text style={{ fontSize: 18, marginBottom: 12, color: colorScheme === 'dark' ? '#d0d0d0' : theme.text }}>{goal.name}</Text>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
         <TouchableOpacity
           style={{ backgroundColor: dimensionColors[dimension] || '#00BFFF', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 32, shadowColor: '#00BFFF', shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 }}
@@ -493,6 +495,8 @@ const GoalSettingsScreen = () => {
   // Helper for Animated SVG
   const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+  const styles = createStyles(theme);
+  
   return (
     <ScrollView
       contentContainerStyle={styles.scrollContainer}
@@ -504,9 +508,9 @@ const GoalSettingsScreen = () => {
       <View style={[styles.container, { width: '100%', paddingHorizontal: 12 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, alignSelf: 'center', width: '100%', justifyContent: 'center' }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', left: 0, padding: 8, zIndex: 2 }}>
-            <Ionicons name="arrow-back" size={28} color="#333" />
+            <Ionicons name="arrow-back" size={28} color={theme.text} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 28, fontWeight: 'bold', textAlign: 'center' }}>Your Goals</Text>
+          <Text style={{ fontSize: 28, fontWeight: 'bold', textAlign: 'center', color: theme.text }}>Your Goals</Text>
         </View>
         {Object.keys(presetGoals).map((dimension) => (
           <View key={dimension}>
@@ -521,16 +525,16 @@ const GoalSettingsScreen = () => {
               <Ionicons
                 name={expandedDimension === dimension ? 'chevron-up' : 'chevron-down'}
                 size={24}
-                color="#fff"
+                color="rgba(0, 0, 0, 0.85)"
               />
             </TouchableOpacity>
 
             {expandedDimension === dimension && (
-              <View style={{ padding: 16, backgroundColor: '#f8f8f8', borderRadius: 16, marginBottom: 24, width: '100%', alignSelf: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <View style={{ padding: 16, backgroundColor: theme.secondaryButton, borderRadius: 16, marginBottom: 24, width: '100%', alignSelf: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 {/* Button Row: Add Custom Goal, Select Color, Reset Goals */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
                   <TouchableOpacity
-                    style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: dimensionColors[dimension] || '#00BFFF', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}
+                    style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: dimensionColors[dimension] || theme.primaryButtonText, backgroundColor: theme.cardBackground, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}
                     onPress={() => setShowAddGoalModal(dimension)}
                   >
                     <Ionicons name="add" size={24} color={dimensionColors[dimension] || '#00BFFF'} />
@@ -545,7 +549,7 @@ const GoalSettingsScreen = () => {
                     <Ionicons name="color-palette" size={24} color="#fff" />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#e74c3c', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: theme.error, backgroundColor: theme.cardBackground, alignItems: 'center', justifyContent: 'center' }}
                     onPress={() => resetGoalsForDimension(dimension)}
                   >
                     <Ionicons name="refresh" size={24} color="#e74c3c" />
@@ -563,24 +567,24 @@ const GoalSettingsScreen = () => {
                     onRequestClose={() => setShowAddGoalModal(null)}
                   >
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.25)' }}>
-                      <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 28, width: 340, maxWidth: '95%', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
-                        <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 18 }}>Add Custom Goal</Text>
+                      <View style={{ backgroundColor: theme.modalBackground, borderRadius: 20, padding: 28, width: 340, maxWidth: '95%', alignItems: 'center', shadowColor: theme.shadowColor, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+                        <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 18, color: colorScheme === 'dark' ? '#d0d0d0' : theme.text }}>Add Custom Goal</Text>
                         <TextInput
                           value={customGoalText}
                           onChangeText={setCustomGoalText}
                           placeholder="Custom goal name"
-                          placeholderTextColor="#888"
-                          style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, fontSize: 16, marginBottom: 12, backgroundColor: '#fff', width: '100%' }}
+                          placeholderTextColor={theme.placeholderText}
+                          style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 8, padding: 10, fontSize: 16, marginBottom: 12, backgroundColor: theme.inputBackground, width: '100%', color: theme.text }}
                         />
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                          <Text style={{ fontSize: 16 }}>Quantifiable</Text>
+                          <Text style={{ fontSize: 16, color: colorScheme === 'dark' ? '#d0d0d0' : theme.text }}>Quantifiable</Text>
                           <TouchableOpacity onPress={() => setQuantifiable(!quantifiable)} style={{ marginLeft: 10 }}>
                             <Ionicons name={quantifiable ? 'checkbox' : 'square-outline'} size={24} color="#00BFFF" />
                           </TouchableOpacity>
                         </View>
                         {quantifiable && (
                           <View style={{ marginBottom: 12, width: '100%' }}>
-                            <Text style={{ fontSize: 16 }}>Set Target Count:</Text>
+                            <Text style={{ fontSize: 16, color: theme.text }}>Set Target Count:</Text>
                             <TextInput
                               value={targetCount.toString()}
                               onChangeText={(value) => {
@@ -594,15 +598,15 @@ const GoalSettingsScreen = () => {
                                 }
                               }}
                               keyboardType="numeric"
-                              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, fontSize: 16, backgroundColor: '#fff' }}
+                              style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 8, padding: 10, fontSize: 16, backgroundColor: theme.inputBackground, color: theme.text }}
                             />
                           </View>
                         )}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 10 }}>
-                          <TouchableOpacity onPress={() => setShowAddGoalModal(null)} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: '#eee', marginRight: 10 }}>
-                            <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#888' }}>Cancel</Text>
+                          <TouchableOpacity onPress={() => setShowAddGoalModal(null)} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: theme.secondaryButton, marginRight: 10 }}>
+                            <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.secondaryButtonText }}>Cancel</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={addCustomGoal} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: '#00BFFF' }}>
+                          <TouchableOpacity onPress={addCustomGoal} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: theme.primaryButtonText }}>
                             <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#fff' }}>Add</Text>
                           </TouchableOpacity>
                         </View>
@@ -632,11 +636,11 @@ const GoalSettingsScreen = () => {
             onRequestClose={() => setShowPlanModal(false)}
           >
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.25)' }}>
-              <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 28, width: 340, maxWidth: '95%', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
-                <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 18 }}>Plan Goal</Text>
-                <Text style={{ fontSize: 16, marginBottom: 10 }}>Select Start Date</Text>
-                <TouchableOpacity onPress={() => setShowStartDatePicker(true)} style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 18, width: '100%', alignItems: 'center', backgroundColor: '#f8f8f8' }}>
-                  <Text style={{ fontSize: 16 }}>{planStartDate ? planStartDate.toLocaleDateString() : 'Pick a date'}</Text>
+              <View style={{ backgroundColor: theme.modalBackground, borderRadius: 20, padding: 28, width: 340, maxWidth: '95%', alignItems: 'center', shadowColor: theme.shadowColor, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 18, color: theme.text }}>Plan Goal</Text>
+                <Text style={{ fontSize: 16, marginBottom: 10, color: theme.text }}>Select Start Date</Text>
+                <TouchableOpacity onPress={() => setShowStartDatePicker(true)} style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 8, padding: 10, marginBottom: 18, width: '100%', alignItems: 'center', backgroundColor: theme.secondaryButton }}>
+                  <Text style={{ fontSize: 16, color: theme.text }}>{planStartDate ? planStartDate.toLocaleDateString() : 'Pick a date'}</Text>
                 </TouchableOpacity>
                 {showStartDatePicker && (
                   <DateTimePicker
@@ -645,38 +649,39 @@ const GoalSettingsScreen = () => {
                     display="default"
                     onChange={onDateChange}
                     style={{ marginBottom: 18 }}
+                    themeVariant={colorScheme}
                   />
                 )}
-                <Text style={{ fontSize: 16, marginBottom: 10 }}>Recurrence</Text>
+                <Text style={{ fontSize: 16, marginBottom: 10, color: theme.text }}>Recurrence</Text>
                 <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 18, flexWrap: 'wrap' }}>
                   {recurrenceOptions.map((option) => (
                     <TouchableOpacity
                       key={option.value}
                       onPress={() => setPlanRecurrence(option.value)}
                       style={{
-                        backgroundColor: planRecurrence === option.value ? '#00BFFF' : '#f0f4f8',
+                        backgroundColor: planRecurrence === option.value ? '#00BFFF' : theme.secondaryButton,
                         borderRadius: 18,
                         paddingVertical: 8,
                         paddingHorizontal: 18,
                         marginHorizontal: 6,
                         marginVertical: 4,
                         borderWidth: planRecurrence === option.value ? 0 : 1,
-                        borderColor: '#ccc',
+                        borderColor: theme.border,
                         shadowColor: planRecurrence === option.value ? '#00BFFF' : 'transparent',
                         shadowOpacity: planRecurrence === option.value ? 0.12 : 0,
                         shadowRadius: 4,
                         elevation: planRecurrence === option.value ? 2 : 0,
                       }}
                     >
-                      <Text style={{ color: planRecurrence === option.value ? '#fff' : '#333', fontWeight: 'bold', fontSize: 15 }}>{option.label}</Text>
+                      <Text style={{ color: planRecurrence === option.value ? '#fff' : theme.text, fontWeight: 'bold', fontSize: 15 }}>{option.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 {planRecurrence !== 'none' && (
                   <>
-                    <Text style={{ fontSize: 16, marginBottom: 10 }}>End Date</Text>
-                    <TouchableOpacity onPress={() => setShowEndDatePicker(true)} style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 18, width: '100%', alignItems: 'center', backgroundColor: '#f8f8f8' }}>
-                      <Text style={{ fontSize: 16 }}>{planEndDate ? planEndDate.toLocaleDateString() : 'Pick an end date'}</Text>
+                    <Text style={{ fontSize: 16, marginBottom: 10, color: theme.text }}>End Date</Text>
+                    <TouchableOpacity onPress={() => setShowEndDatePicker(true)} style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 8, padding: 10, marginBottom: 18, width: '100%', alignItems: 'center', backgroundColor: theme.secondaryButton }}>
+                      <Text style={{ fontSize: 16, color: theme.text }}>{planEndDate ? planEndDate.toLocaleDateString() : 'Pick an end date'}</Text>
                     </TouchableOpacity>
                     {showEndDatePicker && (
                       <DateTimePicker
@@ -687,16 +692,17 @@ const GoalSettingsScreen = () => {
                           setShowEndDatePicker(false);
                           if (date) setPlanEndDate(date);
                         }}
+                        themeVariant={colorScheme}
                         style={{ marginBottom: 18 }}
                       />
                     )}
                   </>
                 )}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 10 }}>
-                  <TouchableOpacity onPress={() => setShowPlanModal(false)} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: '#eee', marginRight: 10 }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#888' }}>Cancel</Text>
+                  <TouchableOpacity onPress={() => setShowPlanModal(false)} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: theme.secondaryButton, marginRight: 10 }}>
+                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.secondaryButtonText }}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={confirmPlanGoal} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: '#00BFFF' }}>
+                  <TouchableOpacity onPress={confirmPlanGoal} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: theme.primaryButtonText }}>
                     <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#fff' }}>Plan</Text>
                   </TouchableOpacity>
                 </View>
@@ -786,18 +792,19 @@ const GoalSettingsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
   },
   container: {
     flex: 1,
     padding: 60,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.background,
   },
   label: {
     fontSize: 18,
     marginBottom: 0,
+    color: theme.text,
   },
   picker: {
     height: 50,
@@ -809,6 +816,9 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 20,
     width: '100%',
+    borderColor: theme.border,
+    backgroundColor: theme.inputBackground,
+    color: theme.text,
   },
   quantifiableToggleContainer: {
     flexDirection: 'row',
@@ -824,6 +834,9 @@ const styles = StyleSheet.create({
     padding: 10,
     width: '100%',
     marginTop: 5,
+    borderColor: theme.border,
+    backgroundColor: theme.inputBackground,
+    color: theme.text,
   },
   addButton: {
     flexDirection: 'row',
@@ -833,7 +846,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontSize: 20,
     marginLeft: 30,
-    color: '#00BFFF',
+    color: theme.primaryButtonText,
   },
   dimensionHeader: {
     flexDirection: 'row',
@@ -843,7 +856,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 15, // ✅ Makes it rounded
     marginBottom: 10,
-    shadowColor: '#000', // ✅ Adds a subtle shadow for depth
+    shadowColor: theme.shadowColor, // ✅ Adds a subtle shadow for depth
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
@@ -852,13 +865,17 @@ const styles = StyleSheet.create({
   dimensionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: 'rgba(0, 0, 0, 0.9)',
+    textShadowColor: 'rgba(255, 255, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   goalItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 45,
-    backgroundColor: '#fff',
+    backgroundColor: theme.cardBackground,
     marginBottom: 10,
   },
   selectColorButton: {
@@ -866,7 +883,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    backgroundColor: '#00BFFF',
+    backgroundColor: theme.primaryButtonText,
     borderRadius: 10,
     marginBottom: 15,
   },
@@ -878,7 +895,7 @@ const styles = StyleSheet.create({
   planButton: {
     padding: 10,
     borderWidth: 2,
-    borderColor: '#00BFFF',
+    borderColor: theme.primaryButtonText,
     borderRadius: 10,
   },
   planButtonText: {
@@ -889,13 +906,13 @@ const styles = StyleSheet.create({
   addAnotherGoalButton: {
     padding: 10,
     borderWidth: 2,
-    borderColor: '#00BFFF',
+    borderColor: theme.primaryButtonText,
     borderRadius: 10,
     marginBottom: 10,
   },
   addAnotherGoalText: {
     fontSize: 18,
-    color: '#00BFFF',
+    color: theme.primaryButtonText,
   },
   addGoalInputContainer: {
     marginBottom: 20,
@@ -911,7 +928,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   planModalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.cardBackground,
     padding: 20,
     borderRadius: 10,
     width: '80%',
@@ -929,7 +946,7 @@ const styles = StyleSheet.create({
   datePickerButton: {
     padding: 10,
     borderWidth: 1,
-    borderColor: '#00BFFF',
+    borderColor: theme.primaryButtonText,
     borderRadius: 5,
   },
   datePickerText: {
@@ -943,11 +960,11 @@ const styles = StyleSheet.create({
   recurrenceOption: {
     padding: 10,
     borderWidth: 1,
-    borderColor: '#00BFFF',
+    borderColor: theme.primaryButtonText,
     borderRadius: 5,
   },
   recurrenceOptionSelected: {
-    backgroundColor: '#00BFFF',
+    backgroundColor: theme.primaryButtonText,
   },
   recurrenceOptionText: {
     fontSize: 18,
@@ -959,18 +976,18 @@ const styles = StyleSheet.create({
   cancelButton: {
     padding: 10,
     borderWidth: 1,
-    borderColor: '#00BFFF',
+    borderColor: theme.primaryButtonText,
     borderRadius: 5,
   },
   submitButton: {
     padding: 10,
     borderWidth: 1,
-    borderColor: '#00BFFF',
+    borderColor: theme.primaryButtonText,
     borderRadius: 5,
   },
   cancelButtonText: {
     fontSize: 18,
-    color: '#00BFFF',
+    color: theme.primaryButtonText,
   },
   submitButtonText: {
     fontSize: 18,

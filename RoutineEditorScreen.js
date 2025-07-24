@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getColorForDimension } from './getColorForDimension';
+import { useTheme } from './ThemeContext';
 
 const iconList = [
   { name: 'sunny', label: 'Morning' },
@@ -21,6 +22,7 @@ const iconList = [
 ];
 
 const RoutineEditorScreen = ({ navigation, route }) => {
+  const { theme } = useTheme();
   const editingRoutine = route.params?.routine || null;
   const [name, setName] = useState(editingRoutine?.name || '');
   const [selectedIcon, setSelectedIcon] = useState(editingRoutine?.icon || 'sunny');
@@ -83,14 +85,16 @@ const RoutineEditorScreen = ({ navigation, route }) => {
     ]);
   };
 
+  const styles = createStyles(theme);
+  
   return (
     <ScrollView contentContainerStyle={styles.container}>
         <TouchableOpacity
   style={styles.backButton}
   onPress={() => navigation.goBack()} // ✅ Goes back without saving
 >
-  <Ionicons name="arrow-back" size={28} color="#000" />
-  <Text style={styles.backButtonText}>Back</Text>
+  <Ionicons name="arrow-back" size={28} color={theme.text} />
+  {/* <Text style={styles.backButtonText}>Back</Text> */}
 </TouchableOpacity>
       <Text style={styles.label}>Routine Name</Text>
       <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Enter routine name" />
@@ -140,10 +144,10 @@ const RoutineEditorScreen = ({ navigation, route }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { padding: 20, marginTop: 40 },
-  label: { fontSize: 18, fontWeight: 'bold', marginVertical: 10 },
-  input: { borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 15 },
+const createStyles = (theme) => StyleSheet.create({
+  container: { padding: 20, marginTop: 40, backgroundColor: theme.background },
+  label: { fontSize: 18, fontWeight: 'bold', marginVertical: 10, color: theme.text },
+  input: { borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 15, borderColor: theme.border, backgroundColor: theme.inputBackground, color: theme.text },
   iconContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
   iconCircle: { 
     width: 80, 

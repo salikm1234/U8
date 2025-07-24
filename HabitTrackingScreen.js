@@ -36,6 +36,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { configureNotifications, sendHabitCompletionNotification } from './notificationService';
 import { Picker } from '@react-native-picker/picker';
 import { getColorForDimension } from './getColorForDimension';
+import { useTheme } from './ThemeContext';
 
 // Enable layout animations on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -54,6 +55,7 @@ function formatDateLong(dateString) {
 }
 
 const HabitTrackingScreen = ({navigation}) => {
+  const { theme, colorScheme } = useTheme();
   // State for date selection and management
   const [selectedDate, setSelectedDate] = useState(getUniversalTime().fullDate);
   useEffect(() => {
@@ -92,6 +94,7 @@ const HabitTrackingScreen = ({navigation}) => {
     setAllHabits(parsedHabits);
   
     if (dateKey === getUniversalTime().fullDate) {
+      await ensureCountsResetForPastDays();  // Create habits for missed days
       await cloneYesterdayHabits();  // Clone yesterday's habits if missing
     }
   };
@@ -224,6 +227,19 @@ const HabitTrackingScreen = ({navigation}) => {
     setHabits(updatedHabits);
     setCounts(updatedCounts);
     await saveHabits(selectedDate, updatedHabits, updatedCounts);
+    
+    // Also save to habit templates for persistence
+    const habitTemplatesData = await AsyncStorage.getItem('habitTemplates');
+    const habitTemplates = habitTemplatesData ? JSON.parse(habitTemplatesData) : [];
+    const newTemplate = {
+      id: newHabit.id,
+      name: newHabit.name,
+      target: newHabit.target,
+      dimension: newHabit.dimension
+    };
+    habitTemplates.push(newTemplate);
+    await AsyncStorage.setItem('habitTemplates', JSON.stringify(habitTemplates));
+    
     setNewHabitName('');
     setNewHabitTarget('');
     setNewHabitDimension('Physical');
@@ -244,33 +260,106 @@ const HabitTrackingScreen = ({navigation}) => {
   };
 
   /**
-   * Clones yesterday's habits to today if today has no habits
-   * Creates unique IDs for each cloned habit
-   * Initializes counts to 0 for all cloned habits
+   * Ensures all past days have their counts reset to 0
+   * Creates habits for any missed days between last usage and today
+   */
+  const ensureCountsResetForPastDays = async () => {
+    const today = getUniversalTime().fullDate;
+    const habitTemplatesData = await AsyncStorage.getItem('habitTemplates');
+    const habitTemplates = habitTemplatesData ? JSON.parse(habitTemplatesData) : [];
+    
+    if (habitTemplates.length === 0) return;
+    
+    const storedHabits = await AsyncStorage.getItem('allHabits');
+    const parsedHabits = storedHabits ? JSON.parse(storedHabits) : {};
+    
+    // Find the most recent date with habits
+    const datesWithHabits = Object.keys(parsedHabits).sort().reverse();
+    if (datesWithHabits.length === 0) return;
+    
+    const mostRecentDate = datesWithHabits[0];
+    const startDate = new Date(mostRecentDate);
+    const endDate = new Date(today);
+    
+    // Create habits for all days between last usage and today
+    let currentDate = new Date(startDate);
+    currentDate.setDate(currentDate.getDate() + 1); // Start from day after last usage
+    
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      
+      // If no habits exist for this date, create them with counts at 0
+      if (!parsedHabits[dateStr] || parsedHabits[dateStr].habits.length === 0) {
+        const dayHabits = habitTemplates.map(template => ({
+          ...template,
+          createdOn: dateStr
+        }));
+        const dayCounts = {};
+        dayHabits.forEach((habit) => { dayCounts[habit.id] = 0; });
+        
+        parsedHabits[dateStr] = { habits: dayHabits, counts: dayCounts };
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    await AsyncStorage.setItem('allHabits', JSON.stringify(parsedHabits));
+    setAllHabits(parsedHabits);
+  };
+
+  /**
+   * Loads habit templates and creates today's habits if they don't exist
+   * Habit templates persist until explicitly deleted
+   * Daily counts reset to 0 for new days
    */
   const cloneYesterdayHabits = async () => {
     const today = getUniversalTime().fullDate;
-    const yesterday = new Date(new Date(today).setDate(new Date(today).getDate() - 1))
-      .toISOString().split('T')[0];
-  
+    
+    // Load habit templates (persistent habits)
+    const habitTemplatesData = await AsyncStorage.getItem('habitTemplates');
+    let habitTemplates = habitTemplatesData ? JSON.parse(habitTemplatesData) : [];
+    
+    // Load all daily habit data
     const storedHabits = await AsyncStorage.getItem('allHabits');
     const parsedHabits = storedHabits ? JSON.parse(storedHabits) : {};
-    const yesterdayHabits = parsedHabits[yesterday]?.habits || [];
-  
+    
+    // If no templates exist, try to create them from any recent habits
+    if (habitTemplates.length === 0) {
+      // Look for the most recent day with habits
+      const datesWithHabits = Object.keys(parsedHabits)
+        .filter(date => parsedHabits[date]?.habits?.length > 0)
+        .sort()
+        .reverse();
+      
+      if (datesWithHabits.length > 0) {
+        const recentHabits = parsedHabits[datesWithHabits[0]].habits;
+        // Save recent habits as templates
+        habitTemplates = recentHabits.map(habit => ({
+          id: habit.id.split('-')[0], // Remove date suffix if it exists
+          name: habit.name,
+          target: habit.target,
+          dimension: habit.dimension
+        }));
+        await AsyncStorage.setItem('habitTemplates', JSON.stringify(habitTemplates));
+      }
+    }
+    
+    // Create today's habits from templates if they don't exist
     if (!parsedHabits[today] || parsedHabits[today]?.habits.length === 0) {
-      const clonedHabits = yesterdayHabits.map((habit) => ({
-        ...habit,
-        id: `${habit.id}-${today}`,  // Unique ID per day
-        createdOn: today,
-      }));
-      const countsClone = {};
-      clonedHabits.forEach((habit) => { countsClone[habit.id] = 0; });
-  
-      parsedHabits[today] = { habits: clonedHabits, counts: countsClone };
-      await AsyncStorage.setItem('allHabits', JSON.stringify(parsedHabits));
-      setHabits(clonedHabits);
-      setCounts(countsClone);
-      setAllHabits(parsedHabits);
+      if (habitTemplates.length > 0) {
+        const todayHabits = habitTemplates.map(template => ({
+          ...template,
+          createdOn: today
+        }));
+        const countsClone = {};
+        todayHabits.forEach((habit) => { countsClone[habit.id] = 0; });
+        
+        parsedHabits[today] = { habits: todayHabits, counts: countsClone };
+        await AsyncStorage.setItem('allHabits', JSON.stringify(parsedHabits));
+        setHabits(todayHabits);
+        setCounts(countsClone);
+        setAllHabits(parsedHabits);
+      }
     }
   };
 
@@ -290,22 +379,30 @@ const HabitTrackingScreen = ({navigation}) => {
     setHabits(updatedHabits);
     setCounts(updatedCounts);
     setAllHabits(updatedAllHabits);
+    
+    // Also remove from habit templates for permanent deletion
+    const habitTemplatesData = await AsyncStorage.getItem('habitTemplates');
+    const habitTemplates = habitTemplatesData ? JSON.parse(habitTemplatesData) : [];
+    const updatedTemplates = habitTemplates.filter(template => template.id !== habitId);
+    await AsyncStorage.setItem('habitTemplates', JSON.stringify(updatedTemplates));
   };
 
   useEffect(() => {
     loadHabitsForDate(selectedDate);
   }, []);
 
+  const styles = createStyles(theme, colorScheme);
+  
   return (
-    <View style={{ flex: 1, backgroundColor: '#f5fafd' }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={[styles.container]} keyboardShouldPersistTaps="handled">
           {/* Modern Header */}
           <View style={{ alignItems: 'center', marginBottom: 10 }}>
             {selectedDate === getUniversalTime().fullDate ? (
-              <Text style={{ fontSize: 20, fontWeight: '600', color: '#222', marginTop: 10 }}>Your Habits Today</Text>
+              <Text style={{ fontSize: 20, fontWeight: '600', color: theme.text, marginTop: 10 }}>Your Habits Today</Text>
             ) : (
-              <Text style={{ fontSize: 18, fontWeight: '500', color: '#222', marginTop: 10 }}>
+              <Text style={{ fontSize: 18, fontWeight: '500', color: theme.text, marginTop: 10 }}>
                 Your Habits on {formatDateLong(selectedDate)}
               </Text>
             )}
@@ -317,7 +414,7 @@ const HabitTrackingScreen = ({navigation}) => {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity style={styles.graphIconButton} onPress={() => navigation.navigate('HabitSummaryScreen')}>
                 <View style={styles.graphIconBackground}>
-                  <Ionicons name="analytics-outline" size={26} color="#00BFFF" />
+                  <Ionicons name="analytics-outline" size={26} color={theme.primaryButtonText} />
                 </View>
               </TouchableOpacity>
               <View style={{ marginLeft: 10 }}>
@@ -328,6 +425,7 @@ const HabitTrackingScreen = ({navigation}) => {
                   maximumDate={new Date(getUniversalTime().fullDate + 'T23:59:59')}
                   onChange={handleDateChange}
                   style={{ width: 44 }}
+                  themeVariant={colorScheme}
                 />
               </View>
             </View>
@@ -335,8 +433,8 @@ const HabitTrackingScreen = ({navigation}) => {
           {/* Encouragement if all complete */}
           {habits.length > 0 && habits.every(h => counts[h.id] >= h.target) && (
             <View style={{ alignItems: 'center', marginVertical: 24 }}>
-              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#4BB543' }}>All done! 🎉</Text>
-              <Text style={{ fontSize: 16, color: '#888', marginTop: 6 }}>You completed all your habits today!</Text>
+              <Text style={{ fontSize: 22, fontWeight: 'bold', color: theme.success }}>All done! 🎉</Text>
+              <Text style={{ fontSize: 16, color: theme.textSecondary, marginTop: 6 }}>You completed all your habits today!</Text>
             </View>
           )}
           {habits.length === 0 ? (
@@ -350,13 +448,13 @@ const HabitTrackingScreen = ({navigation}) => {
                 const color = dimensionColors[item.dimension] || '#00BFFF';
                 return (
                   <View style={{
-                    backgroundColor: '#fff',
+                    backgroundColor: theme.cardBackground,
                     borderRadius: 20,
                     marginVertical: 10,
                     padding: 20,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    shadowColor: '#000',
+                    shadowColor: theme.shadowColor,
                     shadowOpacity: 0.07,
                     shadowRadius: 8,
                     elevation: 2,
@@ -375,63 +473,64 @@ const HabitTrackingScreen = ({navigation}) => {
                       />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: completed ? '#4BB543' : '#222', textDecorationLine: completed ? 'line-through' : 'none' }}>{item.name}</Text>
+                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: completed ? '#4BB543' : theme.text, textDecorationLine: completed ? 'line-through' : 'none' }}>{item.name}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-                        <Text style={{ fontSize: 15, color: '#888', marginRight: 8 }}>{counts[item.id] || 0} / {item.target}</Text>
+                        <Text style={{ fontSize: 15, color: theme.textSecondary, marginRight: 8 }}>{counts[item.id] || 0} / {item.target}</Text>
                         {completed && <Ionicons name="star" size={20} color="#FFD700" style={{ marginLeft: 4 }} />}
                       </View>
                       {/* Progress Bar */}
-                      <View style={{ width: '100%', height: 10, backgroundColor: '#E0E0E0', borderRadius: 6, marginTop: 8, overflow: 'hidden' }}>
+                      <View style={{ width: '100%', height: 10, backgroundColor: theme.border, borderRadius: 6, marginTop: 8, overflow: 'hidden' }}>
                         <View style={{ height: '100%', backgroundColor: completed ? '#4BB543' : color, borderRadius: 6, width: `${Math.min((counts[item.id] || 0) / item.target * 100, 100)}%` }} />
                       </View>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
-                      <TouchableOpacity onPress={() => decrementCount(item.id)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center', marginRight: 6 }}>
-                        <Ionicons name="remove" size={22} color="#888" />
+                      <TouchableOpacity onPress={() => decrementCount(item.id)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.secondaryButton, alignItems: 'center', justifyContent: 'center', marginRight: 6 }}>
+                        <Ionicons name="remove" size={22} color={theme.textSecondary} />
                       </TouchableOpacity>
                       <TextInput
                         value={counts[item.id]?.toString() || '0'}
-                        style={{ width: 40, height: 32, borderWidth: 1, borderRadius: 8, textAlign: 'center', fontSize: 15, backgroundColor: '#fff', marginHorizontal: 2, borderColor: '#eee' }}
+                        style={{ width: 40, height: 32, borderWidth: 1, borderRadius: 8, textAlign: 'center', fontSize: 15, backgroundColor: theme.inputBackground, marginHorizontal: 2, borderColor: theme.border, color: theme.text }}
                         keyboardType="number-pad"
                         onChangeText={(value) => handleInputChange(item.id, value)}
                       />
                       <TouchableOpacity onPress={() => incrementCount(item.id)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: completed ? '#4BB543' : color, alignItems: 'center', justifyContent: 'center', marginLeft: 6 }}>
-                        <Ionicons name="add" size={22} color="#fff" />
+                        <Ionicons name="add" size={22} color={theme.background} />
                       </TouchableOpacity>
                     </View>
                   </View>
                 );
               }}
               contentContainerStyle={{ paddingBottom: 40 }}
+              scrollEnabled={false}
             />
           )}
           {/* Add Habit Modal */}
           <Modal visible={showAddModal} transparent animationType="fade" onRequestClose={() => setShowAddModal(false)}>
             <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.18)', justifyContent: 'center', alignItems: 'center' }}>
-                <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 28, width: 320, maxWidth: '95%', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
-                  <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 14 }}>Add a New Habit</Text>
+              <View style={{ flex: 1, backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.18)', justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ backgroundColor: theme.modalBackground, borderRadius: 20, padding: 28, width: 320, maxWidth: '95%', alignItems: 'center', shadowColor: theme.shadowColor, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 14, color: theme.text }}>Add a New Habit</Text>
                   <TextInput
-                    style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10, width: '100%', backgroundColor: '#fff', color: '#222' }}
+                    style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10, width: '100%', backgroundColor: theme.inputBackground, color: theme.text }}
                     placeholder="Habit Name"
-                    placeholderTextColor="#888"
+                    placeholderTextColor={theme.placeholderText}
                     value={newHabitName}
                     onChangeText={setNewHabitName}
                   />
                   <TextInput
-                    style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10, width: '100%', backgroundColor: '#fff', color: '#222' }}
+                    style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10, width: '100%', backgroundColor: theme.inputBackground, color: theme.text }}
                     placeholder="Target Count"
-                    placeholderTextColor="#888"
+                    placeholderTextColor={theme.placeholderText}
                     value={newHabitTarget}
                     keyboardType="number-pad"
                     onChangeText={setNewHabitTarget}
                   />
                   <View style={{ width: '100%', marginBottom: 14 }}>
-                    <Text style={{ fontSize: 15, marginBottom: 4 }}>Dimension</Text>
+                    <Text style={{ fontSize: 15, marginBottom: 4, color: theme.text }}>Dimension</Text>
                     <Picker
                       selectedValue={newHabitDimension}
                       onValueChange={setNewHabitDimension}
-                      style={{ width: '100%' }}
+                      style={{ width: '100%', color: theme.text }}
                     >
                       {Object.keys(dimensionColors).map((dim) => (
                         <Picker.Item key={dim} label={dim} value={dim} color={dimensionColors[dim]} />
@@ -439,10 +538,10 @@ const HabitTrackingScreen = ({navigation}) => {
                     </Picker>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 10 }}>
-                    <TouchableOpacity onPress={() => setShowAddModal(false)} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: '#eee', marginRight: 10 }}>
-                      <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#888' }}>Cancel</Text>
+                    <TouchableOpacity onPress={() => setShowAddModal(false)} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: theme.secondaryButton, marginRight: 10 }}>
+                      <Text style={{ fontWeight: 'bold', fontSize: 15, color: theme.secondaryButtonText }}>Cancel</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={addNewHabit} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: '#00BFFF' }}>
+                    <TouchableOpacity onPress={addNewHabit} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: theme.primaryButtonText }}>
                       <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#fff' }}>Add</Text>
                     </TouchableOpacity>
                   </View>
@@ -465,24 +564,24 @@ const HabitTrackingScreen = ({navigation}) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#f5f5f5', marginTop:40 },
+const createStyles = (theme, colorScheme) => StyleSheet.create({
+  container: { flex: 1, padding: 20, backgroundColor: theme.background, marginTop:40 },
   header: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  headerText: { fontSize: 18, fontWeight: '500', marginRight: 10 },
-  noHabitsText: { textAlign: 'center', fontSize: 18, color: 'gray', marginTop: 30 },
+  headerText: { fontSize: 18, fontWeight: '500', marginRight: 10, color: theme.text },
+  noHabitsText: { textAlign: 'center', fontSize: 18, color: theme.textSecondary, marginTop: 30 },
   habitItem: { flexDirection: 'row', alignItems: 'center', marginVertical: 10 },
-  habitName: { flex: 1, fontSize: 20, marginLeft: 15 },
+  habitName: { flex: 1, fontSize: 20, marginLeft: 15, color: theme.text },
   counterContainer: { flexDirection: 'row', alignItems: 'center' },
-  counterInput: { width: 50, height: 40, borderWidth: 1, borderRadius: 10, textAlign: 'center', marginHorizontal: 10 },
-  newHabitContainer: { marginTop: 20, backgroundColor: '#E8F6FF', borderRadius: 10, padding: 15 },
+  counterInput: { width: 50, height: 40, borderWidth: 1, borderRadius: 10, textAlign: 'center', marginHorizontal: 10, borderColor: theme.border, backgroundColor: theme.inputBackground, color: theme.text },
+  newHabitContainer: { marginTop: 20, backgroundColor: theme.suggestedContainer, borderRadius: 10, padding: 15 },
   newHabitHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  newHabitHeaderText: { fontSize: 20, fontWeight: 'bold' },
-  input: { borderWidth: 1, borderRadius: 10, padding: 10, marginTop: 10 },
-  addButton: { backgroundColor: '#00BFFF', padding: 15, borderRadius: 10, marginTop: 10, alignItems: 'center' },
-  addButtonText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+  newHabitHeaderText: { fontSize: 20, fontWeight: 'bold', color: theme.text },
+  input: { borderWidth: 1, borderRadius: 10, padding: 10, marginTop: 10, borderColor: theme.border, backgroundColor: theme.inputBackground, color: theme.text },
+  addButton: { backgroundColor: theme.primaryButtonText, padding: 15, borderRadius: 10, marginTop: 10, alignItems: 'center' },
+  addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
   summaryButton: {
     fontSize: 18,
-    color: '#00BFFF',
+    color: theme.primaryButtonText,
     fontWeight: 'bold',
     marginRight: 5,
   },
@@ -498,7 +597,7 @@ const styles = StyleSheet.create({
   
   summaryButtonText: {
     fontSize: 16,
-    color: '#00BFFF',
+    color: theme.primaryButtonText,
     fontWeight: 'bold',
     marginLeft: 5,
   },

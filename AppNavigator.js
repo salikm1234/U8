@@ -33,6 +33,7 @@ import RoutineActionScreen from './RoutineActionScreen';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AddTaskScreen from './AddTaskScreen';
 import { getUniversalTime } from './dateUtils';
+import { useTheme } from './ThemeContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -108,8 +109,30 @@ function RoutineStack() {
  * Tab Order: Home, Calendar, Habits, Routines
  */
 export default function AppNavigator() {
+    const { theme, colorScheme } = useTheme();
+    
     return (
-      <Tab.Navigator initialRouteName="HomeStack" screenOptions={{ tabBarShowLabel: false }}>
+      <Tab.Navigator 
+        initialRouteName="HomeStack" 
+        screenOptions={{ 
+          tabBarShowLabel: false,
+          tabBarStyle: {
+            backgroundColor: theme.tabBarBackground,
+            borderTopColor: theme.border,
+            borderTopWidth: 0.5,
+            paddingBottom: 8,
+            paddingTop: 8,
+            height: 85,
+            shadowColor: theme.shadowColor,
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 8,
+          },
+          tabBarActiveTintColor: theme.tabBarActiveTint,
+          tabBarInactiveTintColor: theme.tabBarInactiveTint,
+        }}
+      >
         <Tab.Screen
           name="HomeStack"
           component={HomeStack}

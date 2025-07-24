@@ -7,8 +7,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getUniversalTime } from './dateUtils';
 // import { getColorForDimension } from './dateUtils';
 import { getColorForDimension } from './getColorForDimension';
+import { useTheme } from './ThemeContext';
 
 const CalendarScreen = ({ navigation }) => {
+  const { theme, colorScheme } = useTheme();
   const [selectedDate, setSelectedDate] = useState(getUniversalTime().fullDate);
   const [dailyGoals, setDailyGoals] = useState([]);
   const [markedDates, setMarkedDates] = useState({});
@@ -125,16 +127,69 @@ const CalendarScreen = ({ navigation }) => {
       )}
   
       <TouchableOpacity onPress={() => deleteGoal(item.id)} style={styles.deleteButton}>
-        <Ionicons name="trash-bin" size={24} color="#fff" />
+        <Ionicons name="trash-bin" size={20} color="#E57373" />
       </TouchableOpacity>
     </View>
   );
 
+  const styles = createStyles(theme);
+  
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Calendar
+  key={colorScheme} // Force re-render when theme changes
   onDayPress={onDayPress}
   markedDates={markedDates}
+  theme={{
+    backgroundColor: theme.calendarBackground,
+    calendarBackground: theme.calendarBackground,
+    textSectionTitleColor: theme.calendarTextSectionTitleColor,
+    selectedDayBackgroundColor: theme.calendarSelectedDayBackgroundColor,
+    selectedDayTextColor: theme.calendarSelectedDayTextColor,
+    todayTextColor: theme.calendarTodayTextColor,
+    dayTextColor: theme.calendarDayTextColor,
+    textDisabledColor: theme.calendarTextDisabledColor,
+    monthTextColor: theme.calendarMonthTextColor,
+    indicatorColor: theme.calendarArrowColor,
+    arrowColor: theme.calendarArrowColor,
+    textDayFontWeight: '300',
+    textMonthFontWeight: 'bold',
+    textDayHeaderFontWeight: '300',
+    textDayFontSize: 16,
+    textMonthFontSize: 16,
+    textDayHeaderFontSize: 16,
+    'stylesheet.calendar.header': {
+      header: {
+        backgroundColor: theme.calendarBackground,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingLeft: 10,
+        paddingRight: 10,
+        alignItems: 'center'
+      },
+      monthText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: theme.calendarMonthTextColor,
+        margin: 10
+      }
+    },
+    'stylesheet.day.basic': {
+      base: {
+        width: 32,
+        height: 32,
+        alignItems: 'center',
+        justifyContent: 'center'
+      },
+      text: {
+        marginTop: 0,
+        fontSize: 16,
+        fontWeight: '300',
+        color: theme.calendarDayTextColor,
+        backgroundColor: 'transparent'
+      }
+    }
+  }}
   renderHeader={(date) => {
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
@@ -143,7 +198,7 @@ const CalendarScreen = ({ navigation }) => {
     const month = monthNames[date.getMonth()];
     const year = date.getFullYear();
     return (
-      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: theme.text }}>
         {month} {year}
       </Text>
     );
@@ -158,6 +213,7 @@ const CalendarScreen = ({ navigation }) => {
               renderItem={renderItem}
               keyExtractor={(item) => item.id}
               ListHeaderComponent={<Text style={styles.header}>Goals for {selectedDate}</Text>}
+              scrollEnabled={false}
             />
           ) : (
             <View style={styles.noGoals}>
@@ -198,15 +254,17 @@ const CalendarScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
+    backgroundColor: theme.background,
   },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
     marginVertical: 10,
+    color: theme.text,
   },
   goalItem: {
     flexDirection: 'row',
@@ -223,7 +281,7 @@ const styles = StyleSheet.create({
   },
   completedText: {
     textDecorationLine: 'line-through',
-    color: 'gray',
+    color: theme.textSecondary,
   },
   counter: {
     marginRight: 10,
@@ -240,13 +298,12 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   deleteButton: {
-    borderWidth: 2, // Thin border for visibility
-    borderColor: '#fff', // White border for contrast
-    borderRadius: 15, // Rounded shape
-    padding: 5, // Padding for spacing
+    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Soft white background
+    borderRadius: 18, // More rounded
+    padding: 8, // Slightly more padding
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Light overlay for better visibility
+    marginLeft: 12, // Move further from text
   },
 });
 

@@ -237,6 +237,7 @@ const scheduleRecurringGoals = async () => {
           renderItem={renderGoalItem}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={<Text style={styles.header}>Selected Goals</Text>}
+          scrollEnabled={false}
         />
 
         <View style={styles.recurrenceContainer}>

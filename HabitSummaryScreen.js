@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList, Alert } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUniversalTime } from './dateUtils';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useTheme } from './ThemeContext';
 
 const HabitSummaryScreen = ({navigation}) => {
+  const { theme } = useTheme();
   const [habits, setHabits] = useState([]);
   const [selectedHabit, setSelectedHabit] = useState(null);
   const [monthlyData, setMonthlyData] = useState([]);
@@ -51,7 +53,7 @@ const HabitSummaryScreen = ({navigation}) => {
     });
   
     const filteredHabits = Object.entries(habitTracker)
-      .filter(([, dates]) => dates.length >= 2) // ✅ Persisted at least 2 days
+      .filter(([, dates]) => dates.length >= 1) // ✅ Show all habits, including new ones
       .map(([name, data]) => ({
         name,
         totalDays: data.length,
@@ -62,7 +64,7 @@ const HabitSummaryScreen = ({navigation}) => {
     setHabits(filteredHabits);
     if (filteredHabits.length > 0) setSelectedHabit(filteredHabits[0].name);
     setHabitItems(filteredHabits.map((h) => ({
-      label: `${h.name} (${h.totalDays} days tracked)${h.isDeleted ? ' - Deleted' : ''}`,
+      label: `${h.name} (${h.totalDays} ${h.totalDays === 1 ? 'day' : 'days'} tracked)${h.isDeleted ? ' - Deleted' : ''}`,
       value: h.name
     })));
   };
@@ -97,6 +99,46 @@ const HabitSummaryScreen = ({navigation}) => {
     setAverageCount(validCounts.length ? (validCounts.reduce((sum, c) => sum + c, 0) / validCounts.length).toFixed(2) : 0);
   };
 
+  const deleteHabitFromHistory = async (habitName) => {
+    Alert.alert(
+      'Delete Habit History',
+      `Are you sure you want to remove "${habitName}" from your history? This will remove it from the summary but won't affect your daily tracking.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Remove the habit from all historical data
+              const storedHabits = await AsyncStorage.getItem('allHabits');
+              const parsedHabits = storedHabits ? JSON.parse(storedHabits) : {};
+              
+              // Go through each date and remove this habit
+              Object.keys(parsedHabits).forEach(date => {
+                if (parsedHabits[date].habits) {
+                  parsedHabits[date].habits = parsedHabits[date].habits.filter(
+                    habit => habit.name !== habitName
+                  );
+                }
+              });
+              
+              // Save the updated data
+              await AsyncStorage.setItem('allHabits', JSON.stringify(parsedHabits));
+              
+              // Reload habits and reset selection
+              await loadHabits();
+              setSelectedHabit(null);
+              Alert.alert('Success', 'Habit removed from history');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete habit from history');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   useEffect(() => { 
     loadHabits(); 
     // Setup month and year dropdowns
@@ -106,26 +148,47 @@ const HabitSummaryScreen = ({navigation}) => {
   }, []);
   useEffect(() => { loadMonthlyData(); }, [selectedHabit, selectedMonth, selectedYear, habits]);
 
+  const styles = createStyles(theme);
+  
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Habit Selector */}
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={28} color="#00BFFF" />
+        <Ionicons name="arrow-back" size={28} color={theme.text} />
         <Text style={styles.backText}>Back to Habits</Text>
       </TouchableOpacity>
       <Text style={styles.label}>Select Habit:</Text>
-      <DropDownPicker
-        open={habitOpen}
-        value={selectedHabit}
-        items={habitItems}
-        setOpen={setHabitOpen}
-        setValue={setSelectedHabit}
-        setItems={setHabitItems}
-        placeholder="Select a habit"
-        style={{ marginBottom: 16 }}
-        containerStyle={{ marginBottom: 16, zIndex: 30 }}
-        dropDownContainerStyle={{ zIndex: 30 }}
-      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+        <View style={{ flex: 1 }}>
+          <DropDownPicker
+            open={habitOpen}
+            value={selectedHabit}
+            items={habitItems}
+            setOpen={setHabitOpen}
+            setValue={setSelectedHabit}
+            setItems={setHabitItems}
+            placeholder="Select a habit"
+            style={{}}
+            containerStyle={{ zIndex: 30 }}
+            dropDownContainerStyle={{ zIndex: 30 }}
+          />
+        </View>
+        {selectedHabit && (
+          <TouchableOpacity 
+            style={{ 
+              marginLeft: 10, 
+              backgroundColor: '#FF6B6B', 
+              borderRadius: 8, 
+              padding: 10,
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onPress={() => deleteHabitFromHistory(selectedHabit)}
+          >
+            <Ionicons name="trash-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Month & Year Selector */}
       <View style={styles.dateSelector}>
@@ -191,9 +254,9 @@ const HabitSummaryScreen = ({navigation}) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 20, backgroundColor: '#f5f5f5', marginTop: 50 },
-  label: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
+const createStyles = (theme) => StyleSheet.create({
+  container: { flexGrow: 1, padding: 20, backgroundColor: theme.background, marginTop: 50 },
+  label: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: theme.text },
   dateSelector: { flexDirection: 'row', marginBottom: 20 },
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap' },
   dayBox: { width: '13%', height: 60, margin: 5, justifyContent: 'center', alignItems: 'center', borderRadius: 10 },
@@ -201,7 +264,7 @@ const styles = StyleSheet.create({
   countText: { fontSize: 14 },
   averageText: { fontSize: 20, fontWeight: 'bold', marginTop: 20, textAlign: 'center' },
   backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-  backText: { fontSize: 18, color: '#00BFFF', marginLeft: 10 },
+  backText: { fontSize: 18, color: theme.primaryButtonText, marginLeft: 10 },
 });
 
 export default HabitSummaryScreen;
