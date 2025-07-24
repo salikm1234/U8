@@ -7,11 +7,14 @@ import { Picker } from '@react-native-picker/picker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
-import { goals as presetGoals } from './goals';
+import { goals as defaultPresetGoals } from './goals';
 import { getUniversalTime } from './dateUtils';
-import { getColorForDimension } from './dateUtils';
+import { useColors } from './ColorContext';
+import { useGoals } from './GoalsContext';
 
 const GoalSelectionScreen = ({ route, navigation }) => {
+    const { getColor } = useColors();
+    const { presetGoals } = useGoals();
     const date = route.params?.date || getUniversalTime().fullDate;
         const [selectedDimension, setSelectedDimension] = useState('Physical'); // Default to first dimension
   const [selectedGoal, setSelectedGoal] = useState('');
@@ -22,7 +25,6 @@ const GoalSelectionScreen = ({ route, navigation }) => {
   const [recurrenceType, setRecurrenceType] = useState('Daily');
   const [endDate, setEndDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dimensionColors, setDimensionColors] = useState({});
   
   // Reset selected goals when screen is opened
   useFocusEffect(
@@ -30,28 +32,24 @@ const GoalSelectionScreen = ({ route, navigation }) => {
       setSelectedGoals([]); 
       loadScheduledGoals(); 
       loadGoals(); 
-      loadDimensionColors(); // 🌈 Load colors on screen focus
     }, [])
   );
+  
+  // Reload goals when presetGoals change
+  useEffect(() => {
+    loadGoals();
+  }, [presetGoals]);
 
-  // Load preset and custom goals from AsyncStorage dynamically
+  // Load preset and custom goals
   const loadGoals = async () => {
     try {
-      let storedPresetGoals = await AsyncStorage.getItem('presetGoals');
-      if (!storedPresetGoals) {
-        // First app launch - store default goals
-        await AsyncStorage.setItem('presetGoals', JSON.stringify(presetGoals));
-        storedPresetGoals = JSON.stringify(presetGoals); // Assign it here so we can parse it below
-      }
-  
-      let presetGoalsParsed = JSON.parse(storedPresetGoals);
       const storedCustomGoals = await AsyncStorage.getItem('customGoals');
       const customGoals = storedCustomGoals ? JSON.parse(storedCustomGoals) : {};
   
-      // Merge custom and preset goals
+      // Merge custom and preset goals from context
       const mergedGoals = {};
-      for (let dimension of Object.keys(presetGoalsParsed)) {
-        mergedGoals[dimension] = [...presetGoalsParsed[dimension], ...(customGoals[dimension] || [])];
+      for (let dimension of Object.keys(presetGoals)) {
+        mergedGoals[dimension] = [...presetGoals[dimension], ...(customGoals[dimension] || [])];
       }
   
       setAvailableGoals(mergedGoals);
@@ -176,24 +174,10 @@ const scheduleRecurringGoals = async () => {
     return currentDate;
   };
 
-  const loadDimensionColors = async () => {
-    try {
-      const storedColors = await AsyncStorage.getItem('dimensionColors');
-      if (storedColors) {
-        setDimensionColors(JSON.parse(storedColors));
-      } else {
-        setDimensionColors({}); // Fallback if no colors found
-      }
-    } catch (error) {
-      console.error('Error loading dimension colors:', error);
-    }
-  };
 
   const renderGoalItem = ({ item }) => {
-    const color = dimensionColors[item.dimension] || '#D3D3D3'; // Fallback if no color found
-  
     return (
-      <View style={[styles.goalItem, { backgroundColor: color }]}>
+      <View style={[styles.goalItem, { backgroundColor: getColor(item.dimension) }]}>
         <Text style={styles.goalText}>{item.name}</Text>
         <TouchableOpacity onPress={() => removeGoal(item.id)}>
           <Ionicons name="remove-circle" size={24} color="white" />

@@ -20,6 +20,8 @@ import React from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import AppNavigator from './AppNavigator';
 import { ThemeProvider, useTheme } from './ThemeContext';
+import { ColorProvider } from './ColorContext';
+import { GoalsProvider } from './GoalsContext';
 
 function ThemedApp() {
   const { theme, colorScheme } = useTheme();
@@ -48,7 +50,11 @@ function ThemedApp() {
 export default function App() {
   return (
     <ThemeProvider>
-      <ThemedApp />
+      <ColorProvider>
+        <GoalsProvider>
+          <ThemedApp />
+        </GoalsProvider>
+      </ColorProvider>
     </ThemeProvider>
   );
 }

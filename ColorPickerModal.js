@@ -31,9 +31,9 @@ const rgbToHex = (r, g, b) => {
   return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
 };
 
-const ColorPickerModal = ({ visible, onClose, onColorSelected, dimensionKey }) => {
+const ColorPickerModal = ({ visible, onClose, onColorSelected, dimensionKey, currentColor }) => {
   const { theme } = useTheme();
-  const [selectedColor, setSelectedColor] = useState(defaultColors[dimensionKey] || '#FFA07A');
+  const [selectedColor, setSelectedColor] = useState(currentColor || defaultColors[dimensionKey] || '#FFA07A');
   const [usedColors, setUsedColors] = useState([]);
   const [rgbValues, setRgbValues] = useState({ r: 255, g: 255, b: 255 });
   const [hexInput, setHexInput] = useState('');
@@ -43,7 +43,7 @@ const ColorPickerModal = ({ visible, onClose, onColorSelected, dimensionKey }) =
       initializeColor();
       loadUsedColors();
     }
-  }, [visible]);
+  }, [visible, currentColor]);
 
  // 🏃 Preload defaults if missing
 const preloadDefaults = async () => {
@@ -56,12 +56,11 @@ const preloadDefaults = async () => {
   // 🏃 Load selected color or use default
   const initializeColor = async () => {
     await preloadDefaults();
-    const savedColors = JSON.parse(await AsyncStorage.getItem('selectedColors')) || {};
-    const savedColor = savedColors[dimensionKey] || defaultColors[dimensionKey] || '#FFA07A';
-    setSelectedColor(savedColor);
-    const rgb = hexToRgb(savedColor);
+    const colorToUse = currentColor || defaultColors[dimensionKey] || '#FFA07A';
+    setSelectedColor(colorToUse);
+    const rgb = hexToRgb(colorToUse);
     setRgbValues(rgb);
-    setHexInput(savedColor);
+    setHexInput(colorToUse);
   };
 
   // Load colors already used by other dimensions

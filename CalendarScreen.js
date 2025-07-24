@@ -5,28 +5,42 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getUniversalTime } from './dateUtils';
-// import { getColorForDimension } from './dateUtils';
-import { getColorForDimension } from './getColorForDimension';
 import { useTheme } from './ThemeContext';
+import { useColors } from './ColorContext';
 
 const CalendarScreen = ({ navigation }) => {
   const { theme, colorScheme } = useTheme();
+  const { getColor } = useColors();
   const [selectedDate, setSelectedDate] = useState(getUniversalTime().fullDate);
   const [dailyGoals, setDailyGoals] = useState([]);
   const [markedDates, setMarkedDates] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
   const [counterGoal, setCounterGoal] = useState(null);
   const [count, setCount] = useState(0);
-  const [dimensionColors, setDimensionColors] = useState({});
   
-  const loadDimensionColors = async () => {
-    const allDimensions = ['Physical', 'Mental', 'Environmental', 'Financial', 'Intellectual', 'Occupational', 'Social', 'Spiritual'];
-    const colors = {};
-    for (const dimension of allDimensions) {
-      colors[dimension] = await getColorForDimension(dimension);
-    }
-    setDimensionColors(colors);
+  /**
+   * Determines if text should be black or white based on background color
+   * Uses relative luminance calculation for optimal contrast
+   */
+  const getTextColorForBackground = (backgroundColor) => {
+    if (!backgroundColor) return '#FFFFFF';
+    
+    // Remove # if present
+    const color = backgroundColor.replace('#', '');
+    
+    // Convert hex to RGB
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+    
+    // Calculate relative luminance using WCAG formula
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Use black text only for very light backgrounds (like yellow)
+    // Higher threshold (0.75) means black text is used more rarely
+    return luminance > 0.75 ? '#000000' : '#FFFFFF';
   };
+  
   
   useFocusEffect(
     React.useCallback(() => {
@@ -39,7 +53,6 @@ const CalendarScreen = ({ navigation }) => {
           },
         });
       }
-      loadDimensionColors();
     }, [selectedDate])
   );
 
@@ -115,22 +128,27 @@ const CalendarScreen = ({ navigation }) => {
     setCounterGoal(null);
   };
 
-  const renderItem = ({ item }) => (
-    <View style={[styles.goalItem, { backgroundColor: dimensionColors[item.dimension] || '#D3D3D3' }]}>
-      <Text style={[styles.goalText, item.completed && styles.completedText]}>{item.name}</Text>
-  
-      {/* ✅ Just display count (no interaction) */}
-      {item.quantifiable && (
-        <View style={styles.counter}>
-          <Text style={styles.counterText}>{item.count}/{item.target}</Text>
-        </View>
-      )}
-  
-      <TouchableOpacity onPress={() => deleteGoal(item.id)} style={styles.deleteButton}>
-        <Ionicons name="trash-bin" size={20} color="#E57373" />
-      </TouchableOpacity>
-    </View>
-  );
+  const renderItem = ({ item }) => {
+    const backgroundColor = getColor(item.dimension);
+    const textColor = getTextColorForBackground(backgroundColor);
+    
+    return (
+      <View style={[styles.goalItem, { backgroundColor }]}>
+        <Text style={[styles.goalText, { color: textColor }, item.completed && styles.completedText]}>{item.name}</Text>
+    
+        {/* ✅ Just display count (no interaction) */}
+        {item.quantifiable && (
+          <View style={styles.counter}>
+            <Text style={[styles.counterText, { color: textColor }]}>{item.count}/{item.target}</Text>
+          </View>
+        )}
+    
+        <TouchableOpacity onPress={() => deleteGoal(item.id)} style={styles.deleteButton}>
+          <Ionicons name="trash-bin" size={20} color="#E57373" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const styles = createStyles(theme);
   
@@ -276,7 +294,6 @@ const createStyles = (theme) => StyleSheet.create({
   },
   goalText: {
     fontSize: 18,
-    color: '#fff',
     flex: 1,
   },
   completedText: {
@@ -291,7 +308,6 @@ const createStyles = (theme) => StyleSheet.create({
   },
   counterText: {
     fontSize: 16,
-    color: '#fff',
   },
   noGoals: {
     alignItems: 'center',

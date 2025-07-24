@@ -5,23 +5,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect, useRoute, useNavigation } from '@react-navigation/native';
-import { goals as presetGoals } from './goals'; // Assuming you have a goals.js file with default preset goals
+import { goals as defaultPresetGoals } from './goals'; // Assuming you have a goals.js file with default preset goals
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from './ThemeContext';
+import { useColors } from './ColorContext';
+import { useGoals } from './GoalsContext';
 
 const GoalSettingsScreen = () => {
   const { theme, colorScheme } = useTheme();
+  const { dimensionColors, updateColor, resetColor, resetAllColors } = useColors();
+  const { presetGoals, addGoal, removeGoal, resetDimensionGoals, resetAllGoals: resetAllGoalsContext } = useGoals();
   const [selectedDimension, setSelectedDimension] = useState('Physical');
   const [customGoalText, setCustomGoalText] = useState('');
   const [customGoals, setCustomGoals] = useState({});
-  const [localPresetGoals, setLocalPresetGoals] = useState(JSON.parse(JSON.stringify(presetGoals)));
   const [expandedDimension, setExpandedDimension] = useState(null);
   const [triggerRender, setTriggerRender] = useState(false);
   const [quantifiable, setQuantifiable] = useState(false);
   const [targetCount, setTargetCount] = useState(1);
   const [hasNotepad, setHasNotepad] = useState(false); // Track if the goal has a notepad
-  const [dimensionColors, setDimensionColors] = useState({});
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
   const [currentColorDimension, setCurrentColorDimension] = useState('');
   const [showAddGoalForDimension, setShowAddGoalForDimension] = useState(null);
@@ -94,70 +96,33 @@ const GoalSettingsScreen = () => {
   // 🏃‍♂️ Initialize AsyncStorage with separate default and mutable arrays
   const initializeColorStorage = async () => {
     const defaultsKey = 'defaultDimensionColors';
-    const currentKey = 'dimensionColors';
   
     try {
       const storedDefaults = await AsyncStorage.getItem(defaultsKey);
-      const storedCurrent = await AsyncStorage.getItem(currentKey);
   
       // 🌈 Save default colors if missing (permanent constants)
       if (!storedDefaults) {
         await AsyncStorage.setItem(defaultsKey, JSON.stringify(defaultColors));
-      }
-  
-      // 🎨 If current colors missing, copy defaults to current
-      if (!storedCurrent) {
-        await AsyncStorage.setItem(currentKey, JSON.stringify(defaultColors));
-        setDimensionColors(defaultColors);
-      } else {
-        setDimensionColors(JSON.parse(storedCurrent));
       }
     } catch (error) {
       console.error('Error initializing color storage:', error);
     }
   };
   
-  // 💾 Save currently selected colors to AsyncStorage
-  const saveDimensionColors = async (updatedColors) => {
-    setDimensionColors(updatedColors);
-    await AsyncStorage.setItem('dimensionColors', JSON.stringify(updatedColors));
-  };
-  
   // 🎯 Handle individual dimension color selection
   const handleColorSelect = async (color) => {
-    const updatedColors = { ...dimensionColors, [currentColorDimension]: color };
-    await saveDimensionColors(updatedColors);
+    await updateColor(currentColorDimension, color);
   };
   
-  // ♻️ Reset color for a specific dimension (pull from default array)
+  // ♻️ Reset color for a specific dimension
   const resetColorForDimension = async (dimension) => {
-    try {
-      const defaults = JSON.parse(await AsyncStorage.getItem('defaultDimensionColors'));
-      const updatedColors = { ...dimensionColors, [dimension]: defaults[dimension] };
-      await saveDimensionColors(updatedColors);
-    } catch (error) {
-      console.error('Error resetting dimension color:', error);
-    }
-  };
-  
-  // 🔄 Reset all dimension colors back to defaults
-  const resetAllColors = async () => {
-    try {
-      const defaults = JSON.parse(await AsyncStorage.getItem('defaultDimensionColors'));
-      await saveDimensionColors(defaults);
-    } catch (error) {
-      console.error('Error resetting all colors:', error);
-    }
+    await resetColor(dimension);
   };
 
   const loadCustomGoals = async () => {
     const storedCustomGoals = await AsyncStorage.getItem('customGoals');
     if (storedCustomGoals) {
       setCustomGoals(JSON.parse(storedCustomGoals));
-    }
-    const storedPresetGoals = await AsyncStorage.getItem('presetGoals');
-    if (storedPresetGoals) {
-      setLocalPresetGoals(JSON.parse(storedPresetGoals));
     }
   };
 
@@ -172,7 +137,7 @@ const GoalSettingsScreen = () => {
       return;
     }
     // Prevent duplicate custom goal names (case-insensitive) in the correct dimension
-    const allGoals = [...(localPresetGoals[dimension] || []), ...(customGoals[dimension] || [])];
+    const allGoals = [...(presetGoals[dimension] || []), ...(customGoals[dimension] || [])];
     const isDuplicate = allGoals.some(goal => goal.name.trim().toLowerCase() === customGoalText.trim().toLowerCase());
     if (isDuplicate) {
       Alert.alert('Duplicate Goal', 'A goal with this name already exists in this dimension.');
@@ -186,12 +151,17 @@ const GoalSettingsScreen = () => {
       target: quantifiable ? targetCount : null,
       hasNotepad: true, // Always true
     };
+    // Add the goal using GoalsContext
+    await addGoal(dimension, newGoal);
+    
+    // Also save to customGoals in AsyncStorage for backward compatibility
     const updatedCustomGoals = {
       ...customGoals,
       [dimension]: [...(customGoals[dimension] || []), newGoal],
     };
     setCustomGoals(updatedCustomGoals);
     await AsyncStorage.setItem('customGoals', JSON.stringify(updatedCustomGoals));
+    
     setCustomGoalText('');
     setQuantifiable(false);
     setTargetCount(1);
@@ -216,13 +186,11 @@ const GoalSettingsScreen = () => {
     delete updatedCustomGoals[dimension];
 
     setCustomGoals(updatedCustomGoals);
-    setLocalPresetGoals(prev => ({
-      ...prev,
-      [dimension]: JSON.parse(JSON.stringify(presetGoals[dimension]))
-    }));
+    
+    // Reset dimension goals in context
+    await resetDimensionGoals(dimension);
 
     await AsyncStorage.setItem('customGoals', JSON.stringify(updatedCustomGoals));
-    await AsyncStorage.setItem('presetGoals', JSON.stringify({ ...localPresetGoals, [dimension]: presetGoals[dimension] }));
     setTriggerRender(!triggerRender);
     Alert.alert('Reset', `${dimension} goals have been reset.`);
   };
@@ -230,9 +198,11 @@ const GoalSettingsScreen = () => {
   const resetAllGoals = async () => {
     // Remove all custom goals from state
     setCustomGoals({});
-    setLocalPresetGoals(JSON.parse(JSON.stringify(presetGoals)));
+    
+    // Reset all goals in context
+    await resetAllGoalsContext();
+    
     await AsyncStorage.removeItem('customGoals');
-    await AsyncStorage.setItem('presetGoals', JSON.stringify(presetGoals));
     // Remove all scheduled instances of any custom goal (id starts with 'custom-')
     const allKeys = await AsyncStorage.getAllKeys();
     const dateKeys = allKeys.filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key));
@@ -251,9 +221,8 @@ const GoalSettingsScreen = () => {
   };
 
   const getGoalsForDimension = (dimension) => {
-    const customGoalsForDimension = customGoals[dimension] || [];
-    const presetGoalsForDimension = localPresetGoals[dimension] || [];
-    return [...presetGoalsForDimension, ...customGoalsForDimension];
+    // Only return goals from context since custom goals are now included there
+    return presetGoals[dimension] || [];
   };
 
   const removeGoalFromScheduledDays = async (goalId) => {
@@ -271,7 +240,7 @@ const GoalSettingsScreen = () => {
     }
   };
 
-  const removeGoal = async (dimension, goalId, isCustomGoal) => {
+  const removeGoalHandler = async (dimension, goalId, isCustomGoal) => {
     const currentGoals = getGoalsForDimension(dimension);
     if (currentGoals.length === 1) {
       Alert.alert('Cannot Delete', `At least one goal must remain in the ${dimension} dimension.`);
@@ -286,13 +255,12 @@ const GoalSettingsScreen = () => {
       setCustomGoals(updatedCustomGoals);
       await AsyncStorage.setItem('customGoals', JSON.stringify(updatedCustomGoals));
     } else {
-      const updatedPresetGoals = localPresetGoals[dimension].filter(goal => goal.id !== goalId);
-      setLocalPresetGoals(prev => ({
-        ...prev,
-        [dimension]: updatedPresetGoals
-      }));
-      await AsyncStorage.setItem('presetGoals', JSON.stringify({ ...localPresetGoals, [dimension]: updatedPresetGoals }));
+      // For non-custom goals, they will be removed through the GoalsContext
     }
+    
+    // Remove from GoalsContext
+    await removeGoal(dimension, goalId);
+    
     // Remove all scheduled instances of the deleted goal
     await removeGoalFromScheduledDays(goalId);
     setTriggerRender(!triggerRender);
@@ -326,7 +294,7 @@ const GoalSettingsScreen = () => {
         >
           <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Plan</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => removeGoal(dimension, goal.id, !!goal.id.startsWith('custom-'))}>
+        <TouchableOpacity onPress={() => removeGoalHandler(dimension, goal.id, !!goal.id.startsWith('custom-'))}>
           <Ionicons name="trash" size={26} color="#e74c3c" />
         </TouchableOpacity>
       </View>
@@ -626,6 +594,7 @@ const GoalSettingsScreen = () => {
   onClose={() => setColorPickerVisible(false)} 
   onColorSelected={handleColorSelect}
   dimensionKey={currentColorDimension}
+  currentColor={dimensionColors[currentColorDimension]}
 />
         {/* Planning Modal */}
         {showPlanModal && (

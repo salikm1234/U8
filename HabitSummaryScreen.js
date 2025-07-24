@@ -262,7 +262,7 @@ const createStyles = (theme) => StyleSheet.create({
   dayBox: { width: '13%', height: 60, margin: 5, justifyContent: 'center', alignItems: 'center', borderRadius: 10 },
   dayText: { fontSize: 16, fontWeight: 'bold' },
   countText: { fontSize: 14 },
-  averageText: { fontSize: 20, fontWeight: 'bold', marginTop: 20, textAlign: 'center' },
+  averageText: { fontSize: 20, fontWeight: 'bold', marginTop: 20, textAlign: 'center', color: theme.text },
   backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
   backText: { fontSize: 18, color: theme.primaryButtonText, marginLeft: 10 },
 });

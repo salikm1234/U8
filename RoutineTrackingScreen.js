@@ -4,27 +4,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getUniversalTime } from './dateUtils';
-import { getColorForDimension } from './getColorForDimension';
 import { useTheme } from './ThemeContext';
+import { useColors } from './ColorContext';
 
 const RoutineTrackingScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { getColor } = useColors();
   const [routines, setRoutines] = useState([]);
   const [progress, setProgress] = useState({});
-  const [dimensionColors, setDimensionColors] = useState({});
 
-  useEffect(() => {
-    // Load all dimension colors on mount
-    const dims = ['Physical', 'Mental', 'Environmental', 'Financial', 'Intellectual', 'Occupational', 'Social', 'Spiritual'];
-    const loadColors = async () => {
-      const colors = {};
-      for (const dim of dims) {
-        colors[dim] = await getColorForDimension(dim);
-      }
-      setDimensionColors(colors);
-    };
-    loadColors();
-  }, []);
 
   const loadRoutines = async () => {
     const storedRoutines = await AsyncStorage.getItem('routines');
@@ -115,7 +103,7 @@ useFocusEffect(
                       style={{
                         flex: 1,
                         height: 12,
-                        backgroundColor: dimensionColors[dim] || '#ccc',
+                        backgroundColor: getColor(dim),
                         borderTopLeftRadius: idx === 0 ? 8 : 0,
                         borderBottomLeftRadius: idx === 0 ? 8 : 0,
                         borderTopRightRadius: idx === taskDimensions.length - 1 ? 8 : 0,

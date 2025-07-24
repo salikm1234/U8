@@ -25,25 +25,20 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, ScrollView } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getUniversalTime } from './dateUtils';
-import { getColorForDimension } from './getColorForDimension';
-import { goals as presetGoals } from './goals';
+import { goals as defaultPresetGoals } from './goals';
 import { useTheme } from './ThemeContext';
-import RingChart from './RingChart';
+import { useColors } from './ColorContext';
+import { useGoals } from './GoalsContext';
 
 const HomeScreen = ({ navigation }) => {
   const { theme, colorScheme } = useTheme();
-  
-  // Function to get display name for dimensions (shortened for long names)
-  const getDimensionDisplayName = (name) => {
-    if (name === 'Environmental') return 'Environment';
-    if (name === 'Occupational') return 'Occupation';
-    return name;
-  };
+  const { getColor } = useColors();
+  const { presetGoals } = useGoals();
   
   // Function to adjust color for better contrast on badge
   const getContrastColor = (color) => {
@@ -92,12 +87,10 @@ const HomeScreen = ({ navigation }) => {
   // State for managing daily goals and their completion status
   const [dailyGoals, setDailyGoals] = useState([]);
   
-  // State for dimension data including counts and colors
+  // State for dimension data including counts
   const [dimensionData, setDimensionData] = useState([]);
-  const [dimensionColors, setDimensionColors] = useState({});
   
-  // State for today's date and suggested goals
-  const [todayDate, setTodayDate] = useState(getUniversalTime().fullDate);
+  // State for suggested goals
   const [suggestedGoals, setSuggestedGoals] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [addedGoals, setAddedGoals] = useState({});
@@ -166,28 +159,6 @@ const HomeScreen = ({ navigation }) => {
     setDimensionData(dimensions);
   };
 
-  /**
-   * Loads color schemes for each wellness dimension
-   * Colors are used to visually distinguish different dimensions
-   * and create a cohesive visual experience
-   */
-  const loadDimensionColors = async () => {
-    try {
-      const storedPresetGoals = await AsyncStorage.getItem('presetGoals');
-      const presetGoalsParsed = storedPresetGoals ? JSON.parse(storedPresetGoals) : {};
-  
-      const allDimensions = Object.keys(presetGoalsParsed);
-      const colors = {};
-  
-      for (const dimension of allDimensions) {
-        colors[dimension] = await getColorForDimension(dimension);
-      }
-  
-      setDimensionColors(colors);
-    } catch (error) {
-      console.error('Error loading dimension colors:', error);
-    }
-  };
 
   /**
    * Loads suggested goals that haven't been scheduled for today
@@ -195,22 +166,11 @@ const HomeScreen = ({ navigation }) => {
    * Provides users with quick options to add to their daily schedule
    */
   const loadSuggestedGoals = async () => {
-    let allGoalsData = await AsyncStorage.getItem('presetGoals');
-    let allGoals;
-  
-    // Fallback to default goals if not found in AsyncStorage
-    if (!allGoalsData) {
-      await AsyncStorage.setItem('presetGoals', JSON.stringify(presetGoals));
-      allGoals = presetGoals;
-    } else {
-      allGoals = JSON.parse(allGoalsData);
-    }
-  
     const todayDate = getUniversalTime().fullDate;
     const scheduledGoals = await AsyncStorage.getItem(todayDate);
     const scheduled = scheduledGoals ? JSON.parse(scheduledGoals).map(g => g.id) : [];
   
-    const unscheduledGoals = Object.entries(allGoals)
+    const unscheduledGoals = Object.entries(presetGoals)
       .flatMap(([dimension, goals]) =>
         goals.map(goal => ({ ...goal, dimension }))
       )
@@ -265,7 +225,6 @@ const HomeScreen = ({ navigation }) => {
   // Load data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      loadDimensionColors();    // Load all colors first
       loadHabits();             // Load today's habits (calls loadGoals)
       loadSuggestedGoals();     // Load suggestions
     }, [])
@@ -279,6 +238,29 @@ const HomeScreen = ({ navigation }) => {
   }, []);
 
   /**
+   * Determines if text should be black or white based on background color
+   * Uses relative luminance calculation for optimal contrast
+   */
+  const getTextColorForBackground = (backgroundColor) => {
+    if (!backgroundColor) return '#FFFFFF';
+    
+    // Remove # if present
+    const color = backgroundColor.replace('#', '');
+    
+    // Convert hex to RGB
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+    
+    // Calculate relative luminance using WCAG formula
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Use black text only for very light backgrounds (like yellow)
+    // Higher threshold (0.7) means black text is used more rarely
+    return luminance > 0.75 ? '#000000' : '#FFFFFF';
+  };
+
+  /**
    * Renders individual dimension cards
    * Each card shows the dimension name, count of activities, and visual indicators
    * Cards grow in size based on the number of activities (goals + habits)
@@ -286,12 +268,22 @@ const HomeScreen = ({ navigation }) => {
    */
   const renderDimensionItem = ({ item }) => {
     const hasHabits = habitsByDimension[item.name] && habitsByDimension[item.name].length > 0;
+    const backgroundColor = getColor(item.name);
+    const textColor = getTextColorForBackground(backgroundColor);
+    
+    // Shorten long dimension names for better display in circles
+    const getDisplayName = (name) => {
+      if (name === 'Environmental') return 'Environment';
+      if (name === 'Occupational') return 'Occupation';
+      return name;
+    };
+    
     return (
       <TouchableOpacity
         style={[
           styles.dimensionItem,
           {
-            backgroundColor: dimensionColors[item.name] || '#D3D3D3',
+            backgroundColor: backgroundColor,
             width: Math.min(120 + item.count * 10, 160),
             height: Math.min(120 + item.count * 10, 160),
             borderRadius: Math.min(120 + item.count * 10, 160) / 2,
@@ -299,9 +291,9 @@ const HomeScreen = ({ navigation }) => {
         ]}
         onPress={() => navigation.navigate('DimensionGoalsScreen', { dimensionName: item.name })}
       >
-        <Text style={styles.dimensionText}>{getDimensionDisplayName(item.name)}</Text>
+        <Text style={[styles.dimensionText, { color: textColor }]}>{getDisplayName(item.name)}</Text>
         <View style={styles.badge}>
-          <Text style={[styles.badgeText, { color: getContrastColor(dimensionColors[item.name]) || theme.background, marginRight: hasHabits ? 2 : 0 }]}>{item.count}</Text>
+          <Text style={[styles.badgeText, { color: getContrastColor(backgroundColor), marginRight: hasHabits ? 2 : 0 }]}>{item.count}</Text>
           {hasHabits && (
             <Ionicons name="star" size={16} color="#FFD700" />
           )}
@@ -329,30 +321,18 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Ring chart display - shows wellness dimensions with activity counts */}
+      {/* Dimension cards display - shows all wellness dimensions with activity counts */}
       {dimensionData.length > 0 ? (
-        <View style={styles.chartContainer}>
-          <RingChart
-            data={dimensionData.filter(d => d.count > 0).map(d => ({
-              ...d,
-              color: dimensionColors[d.name] || '#D3D3D3',
-              hasHabits: habitsByDimension[d.name] && habitsByDimension[d.name].length > 0
-            }))}
-            onSlicePress={(item) => navigation.navigate('DimensionGoalsScreen', { dimensionName: item.name })}
-            size={280}
-            innerRadius={85}
-            outerRadius={120}
+        <View style={{ flexGrow: 1 }}>
+          <FlatList
+            data={dimensionData}
+            renderItem={renderDimensionItem}
+            keyExtractor={(item) => item.name}
+            numColumns={2}
+            columnWrapperStyle={styles.dimensionRow}
+            contentContainerStyle={styles.dimensionList}
+            scrollEnabled={false}   // Keeps FlatList from scrolling independently
           />
-          
-          {/* Color key/legend */}
-          <View style={styles.legendContainer}>
-            {dimensionData.filter(d => d.count > 0).map((dimension) => (
-              <View key={dimension.name} style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: dimensionColors[dimension.name] || '#D3D3D3' }]} />
-                <Text style={styles.legendText}>{getDimensionDisplayName(dimension.name)}</Text>
-              </View>
-            ))}
-          </View>
         </View>
       ) : (
         <Text style={styles.noGoalsText}>No goals scheduled for today.</Text>
@@ -378,28 +358,32 @@ const HomeScreen = ({ navigation }) => {
               <Ionicons name="refresh-circle" size={30} color={theme.primaryButtonText} />
             </TouchableOpacity>
           </View>
-          {suggestionsExpanded && suggestedGoals.map((goal) => (
-            <View
-              key={goal.id}
-              style={[
-                styles.suggestedGoalItem,
-                { backgroundColor: dimensionColors[goal.dimension] || '#D3D3D3' },
-              ]}
-            >
-              <Text style={styles.goalText}>{goal.name}</Text>
-              <TouchableOpacity
-                onPress={() => scheduleSuggestedGoal(goal)}
-                disabled={addedGoals[goal.id]}
-                style={{ minWidth: 30, alignItems: 'center' }}
+          {suggestionsExpanded && suggestedGoals.map((goal) => {
+            const backgroundColor = getColor(goal.dimension);
+            const textColor = getTextColorForBackground(backgroundColor);
+            return (
+              <View
+                key={goal.id}
+                style={[
+                  styles.suggestedGoalItem,
+                  { backgroundColor },
+                ]}
               >
-                <Ionicons
-                  name={addedGoals[goal.id] ? "checkmark-circle-outline" : "add-circle-outline"}
-                  size={30}
-                  color={addedGoals[goal.id] ? theme.success : "#fff"}
-                />
-              </TouchableOpacity>
-            </View>
-          ))}
+                <Text style={[styles.goalText, { color: textColor }]}>{goal.name}</Text>
+                <TouchableOpacity
+                  onPress={() => scheduleSuggestedGoal(goal)}
+                  disabled={addedGoals[goal.id]}
+                  style={{ minWidth: 30, alignItems: 'center' }}
+                >
+                  <Ionicons
+                    name={addedGoals[goal.id] ? "checkmark-circle-outline" : "add-circle-outline"}
+                    size={30}
+                    color={addedGoals[goal.id] ? theme.success : textColor}
+                  />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
         </View>
       )}
     </ScrollView>
@@ -456,40 +440,6 @@ const createStyles = (theme) => StyleSheet.create({
     color: theme.primaryButtonText,
     fontWeight: '600',
     letterSpacing: 0.3,
-  },
-  
-  chartContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 30,
-  },
-  
-  legendContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    marginTop: 20,
-    paddingHorizontal: 20,
-  },
-  
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 10,
-    marginVertical: 5,
-  },
-  
-  legendColor: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  
-  legendText: {
-    fontSize: 14,
-    color: theme.text,
-    fontWeight: '500',
   },
   
   settingsButton: {
@@ -549,13 +499,9 @@ const createStyles = (theme) => StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   dimensionText: {
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: 15,
     textAlign: 'center',
     fontWeight: '500',
-    // textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    // textShadowOffset: { width: 0, height: 1 },
-    // textShadowRadius: 2,
   },
   badge: {
     position: 'absolute',
@@ -647,7 +593,6 @@ const createStyles = (theme) => StyleSheet.create({
   goalText: {
     fontSize: 18,
     // fontWeight: 'bold',
-    color: '#000',
     flex: 1,
     marginRight: 10,
   },

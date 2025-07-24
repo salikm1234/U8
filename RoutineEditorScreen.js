@@ -2,46 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { getColorForDimension } from './getColorForDimension';
 import { useTheme } from './ThemeContext';
+import { useColors } from './ColorContext';
 
 const iconList = [
-  { name: 'sunny', label: 'Morning' },
-  { name: 'moon', label: 'Evening' },
-  { name: 'school', label: 'Learning' },
-  { name: 'fitness', label: 'Fitness' },
-  { name: 'library', label: 'Study' },
-  { name: 'walk', label: 'Exercise' },
-  { name: 'color-palette', label: 'Creative' },
-  { name: 'musical-notes', label: 'Music' },
-  { name: 'leaf', label: 'Nature' },
-  { name: 'flame', label: 'Energy' },
-  { name: 'water', label: 'Flow' },
-  { name: 'body', label: 'Wellness' },
-  { name: 'star', label: 'Goals' }
+  { name: 'sunny', label: 'Morning', color: '#FFD93D' },
+  { name: 'moon', label: 'Evening', color: '#6C63FF' },
+  { name: 'school', label: 'Learning', color: '#FF6B6B' },
+  { name: 'fitness', label: 'Fitness', color: '#4ECDC4' },
+  { name: 'library', label: 'Study', color: '#45B7D1' },
+  { name: 'walk', label: 'Exercise', color: '#96CEB4' },
+  { name: 'color-palette', label: 'Creative', color: '#DDA0DD' },
+  { name: 'musical-notes', label: 'Music', color: '#FF8A65' },
+  { name: 'leaf', label: 'Nature', color: '#81C784' },
+  { name: 'flame', label: 'Energy', color: '#FF7043' },
+  { name: 'water', label: 'Flow', color: '#64B5F6' },
+  { name: 'body', label: 'Wellness', color: '#BA68C8' },
 ];
 
 const RoutineEditorScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
+  const { getColor } = useColors();
   const editingRoutine = route.params?.routine || null;
   const [name, setName] = useState(editingRoutine?.name || '');
   const [selectedIcon, setSelectedIcon] = useState(editingRoutine?.icon || 'sunny');
   const [weekdays, setWeekdays] = useState(editingRoutine?.weekdays ?? true);
   const [weekends, setWeekends] = useState(editingRoutine?.weekends ?? false);
-  const [dimensionColors, setDimensionColors] = useState({});
   const [taskDimensions, setTaskDimensions] = useState([]);
 
   useEffect(() => {
-    // Load dimension colors
-    const dims = ['Physical', 'Mental', 'Environmental', 'Financial', 'Intellectual', 'Occupational', 'Social', 'Spiritual'];
-    const loadColors = async () => {
-      const colors = {};
-      for (const dim of dims) {
-        colors[dim] = await getColorForDimension(dim);
-      }
-      setDimensionColors(colors);
-    };
-    loadColors();
     // Get unique dimensions from tasks
     if (editingRoutine?.tasks) {
       const dimsInTasks = editingRoutine.tasks.map(t => t.dimension).filter(Boolean);
@@ -97,7 +86,13 @@ const RoutineEditorScreen = ({ navigation, route }) => {
   {/* <Text style={styles.backButtonText}>Back</Text> */}
 </TouchableOpacity>
       <Text style={styles.label}>Routine Name</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Enter routine name" />
+      <TextInput 
+        style={styles.input} 
+        value={name} 
+        onChangeText={setName} 
+        placeholder="Enter routine name" 
+        placeholderTextColor={theme.placeholderText}
+      />
 
       <Text style={styles.label}>Select Icon</Text>
       <View style={styles.iconContainer}>
@@ -107,26 +102,32 @@ const RoutineEditorScreen = ({ navigation, route }) => {
             onPress={() => setSelectedIcon(icon.name)}
             style={[
               styles.iconCircle,
-              selectedIcon === icon.name && { borderWidth: 3, borderColor: '#4CAF50', backgroundColor: '#E8F5E8' },
+              selectedIcon === icon.name && [styles.iconCircleSelected, { backgroundColor: icon.color, borderColor: icon.color }],
             ]}
           >
-            <Ionicons name={icon.name} size={28} color={selectedIcon === icon.name ? '#4CAF50' : '#666'} />
-            <Text style={[styles.iconLabel, selectedIcon === icon.name && { color: '#4CAF50', fontWeight: '600' }]}>{icon.label}</Text>
+            <Ionicons name={icon.name} size={32} color={selectedIcon === icon.name ? '#FFFFFF' : icon.color} />
+            {/* <Text style={[styles.iconLabel, selectedIcon === icon.name && styles.iconLabelSelected]}>{icon.label}</Text> */}
           </TouchableOpacity>
         ))}
       </View>
 
       <View style={styles.checkboxContainer}>
-        <TouchableOpacity onPress={() => setWeekdays(!weekdays)}>
-          <View style={styles.checkboxItem}>
-            <Ionicons name={weekdays ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={weekdays ? '#4CAF50' : '#ccc'} />
-            <Text style={styles.checkboxText}>Weekdays</Text>
+        <TouchableOpacity onPress={() => setWeekdays(!weekdays)} activeOpacity={0.7}>
+          <View style={[styles.checkboxItem, weekdays && styles.checkboxItemActive, weekdays && { borderColor: '#4CAF50' }]}>
+            <View style={styles.checkboxIconContainer}>
+              <Ionicons name={weekdays ? 'checkmark-circle' : 'ellipse-outline'} size={28} color={weekdays ? '#4CAF50' : theme.textSecondary} />
+            </View>
+            <Text style={[styles.checkboxText, weekdays && styles.checkboxTextActive]}>Weekdays</Text>
+            <Text style={[styles.checkboxSubtext, weekdays && styles.checkboxTextActive]}>Mon - Fri</Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setWeekends(!weekends)}>
-          <View style={styles.checkboxItem}>
-            <Ionicons name={weekends ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={weekends ? '#4CAF50' : '#ccc'} />
-            <Text style={styles.checkboxText}>Weekends</Text>
+        <TouchableOpacity onPress={() => setWeekends(!weekends)} activeOpacity={0.7}>
+          <View style={[styles.checkboxItem, weekends && styles.checkboxItemActive, weekends && { borderColor: '#FF6B6B' }]}>
+            <View style={styles.checkboxIconContainer}>
+              <Ionicons name={weekends ? 'checkmark-circle' : 'ellipse-outline'} size={28} color={weekends ? '#FF6B6B' : theme.textSecondary} />
+            </View>
+            <Text style={[styles.checkboxText, weekends && styles.checkboxTextActive]}>Weekends</Text>
+            <Text style={[styles.checkboxSubtext, weekends && styles.checkboxTextActive]}>Sat - Sun</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -146,8 +147,29 @@ const RoutineEditorScreen = ({ navigation, route }) => {
 
 const createStyles = (theme) => StyleSheet.create({
   container: { padding: 20, marginTop: 40, backgroundColor: theme.background },
-  label: { fontSize: 18, fontWeight: 'bold', marginVertical: 10, color: theme.text },
-  input: { borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 15, borderColor: theme.border, backgroundColor: theme.inputBackground, color: theme.text },
+  label: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    marginVertical: 10, 
+    color: theme.text,
+    letterSpacing: 0.3,
+  },
+  input: { 
+    borderWidth: 1, 
+    borderRadius: 12, 
+    padding: 14, 
+    marginBottom: 20, 
+    borderColor: theme.border, 
+    backgroundColor: theme.inputBackground, 
+    color: theme.text,
+    fontSize: 16,
+    fontWeight: '500',
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
   iconContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
   iconCircle: { 
     width: 80, 
@@ -155,32 +177,111 @@ const createStyles = (theme) => StyleSheet.create({
     borderRadius: 40, 
     justifyContent: 'center', 
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: theme.cardBackground,
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: 'transparent'
+    borderColor: theme.border,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  iconCircleSelected: {
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+    transform: [{ scale: 1.08 }],
   },
   iconLabel: { 
-    fontSize: 10, 
+    fontSize: 7, 
     textAlign: 'center', 
-    marginTop: 4, 
-    color: '#666' 
+    marginTop: 5, 
+    color: theme.text,
+    fontWeight: '500',
   },
-  checkboxContainer: { marginVertical: 20 },
+  iconLabelSelected: {
+    color: theme.text,
+    fontWeight: '500',
+  },
+  checkboxContainer: { 
+    marginVertical: 20,
+    gap: 12,
+  },
   checkboxItem: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    marginVertical: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#f8f8f8'
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    backgroundColor: theme.cardBackground,
+    borderWidth: 2,
+    borderColor: theme.border,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  checkboxText: { fontSize: 16, marginLeft: 12, color: '#333' },
-  saveButton: { backgroundColor: '#4CAF50', padding: 15, borderRadius: 10 },
-  saveButtonText: { color: 'white', textAlign: 'center', fontWeight: 'bold' },
-  deleteButton: { backgroundColor: 'red', padding: 15, borderRadius: 10, marginTop: 10 },
-  deleteButtonText: { color: 'white', textAlign: 'center', fontWeight: 'bold' },
+  checkboxItemActive: {
+    borderWidth: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  checkboxIconContainer: {
+    marginRight: 12,
+  },
+  checkboxText: { 
+    fontSize: 17, 
+    color: theme.text,
+    fontWeight: '700',
+    flex: 1,
+  },
+  checkboxTextActive: {
+    color: theme.text,
+  },
+  checkboxSubtext: {
+    fontSize: 15,
+    color: theme.text,
+    fontWeight: '600',
+    opacity: 0.7,
+  },
+  saveButton: { 
+    backgroundColor: theme.primaryButton, 
+    padding: 16, 
+    borderRadius: 12,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  saveButtonText: { 
+    color: theme.primaryButtonText, 
+    textAlign: 'center', 
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  deleteButton: { 
+    backgroundColor: theme.error, 
+    padding: 16, 
+    borderRadius: 12, 
+    marginTop: 12,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  deleteButtonText: { 
+    color: 'white', 
+    textAlign: 'center', 
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',

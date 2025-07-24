@@ -49,9 +49,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Picker } from '@react-native-picker/picker';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { getColorForDimension } from './getColorForDimension';
 import { goals } from './goals';
 import { useTheme } from './ThemeContext';
+import { useColors } from './ColorContext';
+import { useGoals } from './GoalsContext';
 import { useFocusEffect } from '@react-navigation/native';
 
 // Available wellness dimensions for task categorization
@@ -68,16 +69,16 @@ const DIMENSIONS = [
 
 const AddTaskScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
+  const { getColor } = useColors();
+  const { presetGoals } = useGoals();
   // Extract routine ID from navigation parameters
   const { routineId } = route.params;
   
   // State for form inputs and UI
   const [taskDimension, setTaskDimension] = useState(DIMENSIONS[0]);
-  const [dimensionColors, setDimensionColors] = useState({});
-  const [goalOptions, setGoalOptions] = useState(goals[DIMENSIONS[0]] || []);
-  const [selectedGoalId, setSelectedGoalId] = useState(goals[DIMENSIONS[0]][0]?.id || '');
+  const [goalOptions, setGoalOptions] = useState([]);
+  const [selectedGoalId, setSelectedGoalId] = useState('');
   const [taskDuration, setTaskDuration] = useState('');
-  const [allGoals, setAllGoals] = useState(goals);
   const [isCustomGoal, setIsCustomGoal] = useState(false);
   const [customGoalName, setCustomGoalName] = useState('');
   
@@ -85,59 +86,32 @@ const AddTaskScreen = ({ navigation, route }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownItems, setDropdownItems] = useState([]);
 
-  // Load goals from AsyncStorage to get latest updates
-  const loadGoals = async () => {
-    try {
-      const storedGoals = await AsyncStorage.getItem('presetGoals');
-      if (storedGoals) {
-        const parsedGoals = JSON.parse(storedGoals);
-        setAllGoals(parsedGoals);
-        setGoalOptions(parsedGoals[taskDimension] || []);
-        if (parsedGoals[taskDimension] && parsedGoals[taskDimension].length > 0) {
-          setSelectedGoalId(parsedGoals[taskDimension][0].id);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading goals:', error);
-    }
-  };
-
-  // Reload goals when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      loadGoals();
-    }, [taskDimension])
-  );
+  // Update goal options when dimension changes or goals update
+  useEffect(() => {
+    const goalsForDimension = presetGoals[taskDimension] || [];
+    
+    setGoalOptions(goalsForDimension);
+    setSelectedGoalId(goalsForDimension[0]?.id || '');
+    setIsCustomGoal(false);
+    setCustomGoalName('');
+  }, [taskDimension, presetGoals]);
 
   // Load dimension colors for visual distinction
   useEffect(() => {
-    const loadColors = async () => {
-      const colors = {};
-      const items = [];
-      for (const dim of DIMENSIONS) {
-        const color = await getColorForDimension(dim);
-        colors[dim] = color;
-        items.push({ 
-          label: dim, 
-          value: dim,
-          labelStyle: {
-            color: dim === taskDimension ? color : theme.text
-          }
-        });
-      }
-      setDimensionColors(colors);
-      setDropdownItems(items);
-    };
-    loadColors();
-  }, [taskDimension, theme]);
+    const items = [];
+    for (const dim of DIMENSIONS) {
+      const color = getColor(dim);
+      items.push({ 
+        label: dim, 
+        value: dim,
+        labelStyle: {
+          color: dim === taskDimension ? color : theme.text
+        }
+      });
+    }
+    setDropdownItems(items);
+  }, [taskDimension, theme, getColor]);
 
-  // Update goal options when dimension changes
-  useEffect(() => {
-    setGoalOptions(allGoals[taskDimension] || []);
-    setSelectedGoalId(allGoals[taskDimension] && allGoals[taskDimension][0]?.id || '');
-    setIsCustomGoal(false);
-    setCustomGoalName('');
-  }, [taskDimension, allGoals]);
 
   /**
    * Saves the task to the routine
@@ -248,7 +222,7 @@ const AddTaskScreen = ({ navigation, route }) => {
               color: theme.text,
             }}
             labelStyle={{
-              color: dimensionColors[taskDimension] || theme.text,
+              color: getColor(taskDimension),
             }}
             arrowIconStyle={{
               tintColor: theme.text,
@@ -307,7 +281,7 @@ const AddTaskScreen = ({ navigation, route }) => {
                 itemStyle={{ 
                   fontSize: 18, 
                   numberOfLines: 3,
-                  color: dimensionColors[taskDimension] || theme.text 
+                  color: getColor(taskDimension) 
                 }}
               >
                 {goalOptions.map((goal) => (
@@ -316,7 +290,7 @@ const AddTaskScreen = ({ navigation, route }) => {
                     label={goal.name} 
                     value={goal.id} 
                     numberOfLines={2}
-                    color={dimensionColors[taskDimension] || theme.text}
+                    color={getColor(taskDimension)}
                   />
                 ))}
               </Picker>

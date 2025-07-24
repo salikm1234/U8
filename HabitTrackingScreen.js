@@ -35,8 +35,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { configureNotifications, sendHabitCompletionNotification } from './notificationService';
 import { Picker } from '@react-native-picker/picker';
-import { getColorForDimension } from './getColorForDimension';
 import { useTheme } from './ThemeContext';
+import { useColors } from './ColorContext';
 
 // Enable layout animations on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -56,6 +56,7 @@ function formatDateLong(dateString) {
 
 const HabitTrackingScreen = ({navigation}) => {
   const { theme, colorScheme } = useTheme();
+  const { getColor } = useColors();
   // State for date selection and management
   const [selectedDate, setSelectedDate] = useState(getUniversalTime().fullDate);
   useEffect(() => {
@@ -72,7 +73,6 @@ const HabitTrackingScreen = ({navigation}) => {
   const [allHabits, setAllHabits] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [newHabitDimension, setNewHabitDimension] = useState('Physical');
-  const [dimensionColors, setDimensionColors] = useState({});
 
   const formatDate = (date) => date;
 
@@ -105,18 +105,6 @@ const HabitTrackingScreen = ({navigation}) => {
     loadHabitsForDate(selectedDate);
   }, []);
 
-  // Load dimension colors for visual distinction
-  useEffect(() => {
-    const loadColors = async () => {
-      const dims = ['Physical', 'Mental', 'Environmental', 'Financial', 'Intellectual', 'Occupational', 'Social', 'Spiritual'];
-      const colors = {};
-      for (const dim of dims) {
-        colors[dim] = await getColorForDimension(dim);
-      }
-      setDimensionColors(colors);
-    };
-    loadColors();
-  }, []);
 
   // Reset to today's date when screen comes into focus
   useFocusEffect(
@@ -396,7 +384,13 @@ const HabitTrackingScreen = ({navigation}) => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView contentContainerStyle={[styles.container]} keyboardShouldPersistTaps="handled">
+        <ScrollView 
+          contentContainerStyle={[styles.container]} 
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+        >
           {/* Modern Header */}
           <View style={{ alignItems: 'center', marginBottom: 10 }}>
             {selectedDate === getUniversalTime().fullDate ? (
@@ -440,14 +434,12 @@ const HabitTrackingScreen = ({navigation}) => {
           {habits.length === 0 ? (
             <Text style={styles.noHabitsText}>No habits were scheduled for this day.</Text>
           ) : (
-            <FlatList
-              data={habits}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => {
+            <View>
+              {habits.map((item) => {
                 const completed = counts[item.id] >= item.target;
-                const color = dimensionColors[item.dimension] || '#00BFFF';
+                const color = getColor(item.dimension);
                 return (
-                  <View style={{
+                  <View key={item.id} style={{
                     backgroundColor: theme.cardBackground,
                     borderRadius: 20,
                     marginVertical: 10,
@@ -499,10 +491,8 @@ const HabitTrackingScreen = ({navigation}) => {
                     </View>
                   </View>
                 );
-              }}
-              contentContainerStyle={{ paddingBottom: 40 }}
-              scrollEnabled={false}
-            />
+              })}
+            </View>
           )}
           {/* Add Habit Modal */}
           <Modal visible={showAddModal} transparent animationType="fade" onRequestClose={() => setShowAddModal(false)}>
@@ -532,8 +522,8 @@ const HabitTrackingScreen = ({navigation}) => {
                       onValueChange={setNewHabitDimension}
                       style={{ width: '100%', color: theme.text }}
                     >
-                      {Object.keys(dimensionColors).map((dim) => (
-                        <Picker.Item key={dim} label={dim} value={dim} color={dimensionColors[dim]} />
+                      {['Physical', 'Mental', 'Environmental', 'Financial', 'Intellectual', 'Occupational', 'Social', 'Spiritual'].map((dim) => (
+                        <Picker.Item key={dim} label={dim} value={dim} color={getColor(dim)} />
                       ))}
                     </Picker>
                   </View>
@@ -565,7 +555,7 @@ const HabitTrackingScreen = ({navigation}) => {
 };
 
 const createStyles = (theme, colorScheme) => StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: theme.background, marginTop:40 },
+  container: { flexGrow: 1, padding: 20, backgroundColor: theme.background, marginTop:40, paddingBottom: 100 },
   header: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
   headerText: { fontSize: 18, fontWeight: '500', marginRight: 10, color: theme.text },
   noHabitsText: { textAlign: 'center', fontSize: 18, color: theme.textSecondary, marginTop: 30 },
