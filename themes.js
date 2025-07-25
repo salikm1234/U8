@@ -26,6 +26,8 @@ export const themes = {
     error: '#FF5252',
     warning: '#FFC107',
     info: '#2196F3',
+    starColor: '#FFD700',
+    starOutline: '#8B4513',
     
     // Special UI elements
     shadowColor: '#000000',
@@ -36,6 +38,9 @@ export const themes = {
     // Suggested goals specific
     suggestedContainer: '#E8F6FF',
     suggestedBorder: '#000000',
+    gradientStart: '#00BFFF',
+    gradientMiddle: '#00BFFF',
+    gradientEnd: '#00BFFF',
     
     // Calendar theme
     calendarBackground: '#FFFFFF',
@@ -80,6 +85,8 @@ export const themes = {
     error: '#FF453A',
     warning: '#FF9F0A',
     info: '#00D4FF',
+    starColor: '#FFD700',
+    starOutline: '#B8860B',
     
     // Special UI elements
     shadowColor: '#000000',
@@ -90,6 +97,9 @@ export const themes = {
     // Suggested goals specific - Warmer, less harsh
     suggestedContainer: '#1D1D1F',
     suggestedBorder: '#00D4FF',
+    gradientStart: '#00D4FF',
+    gradientMiddle: '#00D4FF',
+    gradientEnd: '#00D4FF',
     
     // Calendar theme - Refined and modern
     calendarBackground: '#1A1A1A',

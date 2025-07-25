@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -48,6 +48,29 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
   const loadDimensionColor = async () => {
     const color = await getColorForDimension(dimensionName);
     setDimensionColor(color || '#D3D3D3');
+  };
+
+  /**
+   * Determines if text should be black or white based on background color
+   * Uses relative luminance calculation for optimal contrast
+   */
+  const getTextColorForBackground = (backgroundColor) => {
+    if (!backgroundColor) return '#FFFFFF';
+    
+    // Remove # if present
+    const color = backgroundColor.replace('#', '');
+    
+    // Convert hex to RGB
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+    
+    // Calculate relative luminance using WCAG formula
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Use black text only for very light backgrounds (like yellow)
+    // Higher threshold (0.7) means black text is used more rarely
+    return luminance > 0.75 ? '#000000' : '#FFFFFF';
   };
 
   const loadGoals = async () => {
@@ -222,17 +245,18 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
   const renderItem = ({ item }) => {
     if (item._type === 'goal') {
       // Render goal item (existing renderItem logic)
+      const textColor = getTextColorForBackground(dimensionColor);
       return (
         <View style={[styles.goalItem, { backgroundColor: dimensionColor }]}> 
-          <Text style={[styles.goalText, item.completed && styles.completedText]}>{item.name}</Text>
+          <Text style={[styles.goalText, { color: textColor }, item.completed && styles.completedText]}>{item.name}</Text>
           {item.quantifiable && (
             <TouchableOpacity onPress={() => openCounterModal(item)}>
-              <Text style={styles.counterText}>{item.count}/{item.target}</Text>
+              <Text style={[styles.counterText, { color: textColor }]}>{item.count}/{item.target}</Text>
             </TouchableOpacity>
           )}
           {item.hasNotepad && (
             <TouchableOpacity onPress={() => openNotepadModal(item)}>
-              <Ionicons name="document-text-outline" size={24} color="#fff" style={{ marginRight: 10 }} />
+              <Ionicons name="document-text-outline" size={24} color={textColor} style={{ marginRight: 10 }} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -243,7 +267,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
             <Ionicons
               name={item.completed ? "checkmark-circle" : "ellipse-outline"}
               size={28}
-              color={item.completed ? "#00BFFF" : "#fff"}
+              color={item.completed ? theme.success : textColor}
             />
           </TouchableOpacity>
         </View>
@@ -285,7 +309,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
   const styles = createStyles(theme);
   
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { flexGrow: 1 }]}>
       <View style={styles.headerContainer}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={28} color={theme.text} />
@@ -314,7 +338,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{counterGoal?.name}</Text>
-            <Text style={styles.counterText}>
+            <Text style={styles.modalCounterText}>
               Count: {count}/{counterGoal?.target} 
               {count >= counterGoal?.target && " 🎉 Goal Complete!"}
             </Text>
@@ -357,15 +381,15 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </View>
+    </ScrollView>
   );
 };
 
 const createStyles = (theme) => StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     padding: 20,
-    marginTop: 50,
+    paddingTop: 80,
     backgroundColor: theme.background,
   },
   headerContainer: {
@@ -389,7 +413,6 @@ const createStyles = (theme) => StyleSheet.create({
   },
   goalText: {
     fontSize: 18,
-    color: '#fff',
     flex: 1,
     marginRight: 10,
   },
@@ -399,7 +422,6 @@ const createStyles = (theme) => StyleSheet.create({
   },
   counterText: {
     fontSize: 20,
-    color: theme.text, // Use theme text color for visibility
     marginVertical: 10,
   },
   noGoalsText: {
@@ -426,6 +448,11 @@ const createStyles = (theme) => StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     color: theme.text,
+  },
+  modalCounterText: {
+    fontSize: 20,
+    color: theme.text,
+    marginVertical: 10,
   },
   counterButton: {
     padding: 10,

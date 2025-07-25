@@ -96,6 +96,7 @@ const HomeScreen = ({ navigation }) => {
   const [addedGoals, setAddedGoals] = useState({});
   const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
   
+  
   // State for habit tracking integration
   const [habitCounts, setHabitCounts] = useState({});
   const [habitsByDimension, setHabitsByDimension] = useState({});
@@ -237,6 +238,7 @@ const HomeScreen = ({ navigation }) => {
     }
   }, []);
 
+
   /**
    * Determines if text should be black or white based on background color
    * Uses relative luminance calculation for optimal contrast
@@ -295,7 +297,10 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.badge}>
           <Text style={[styles.badgeText, { color: getContrastColor(backgroundColor), marginRight: hasHabits ? 2 : 0 }]}>{item.count}</Text>
           {hasHabits && (
-            <Ionicons name="star" size={16} color="#FFD700" />
+            <View style={styles.starContainer}>
+              <Ionicons name="star" size={20} color={theme.starOutline} style={styles.starOutline} />
+              <Ionicons name="star" size={16} color={theme.starColor} style={[styles.starIcon, { position: 'absolute', top: 2, left: 2 }]} />
+            </View>
           )}
         </View>
       </TouchableOpacity>
@@ -340,50 +345,60 @@ const HomeScreen = ({ navigation }) => {
 
       {/* Suggested goals section - expandable list of recommended goals */}
       {showSuggestions && (
-        <View style={styles.suggestedContainer}>
-          <View style={styles.suggestedHeader}>
-            <TouchableOpacity
-              style={styles.suggestedHeaderToggle}
-              onPress={toggleSuggestions} // Animated toggle
-            >
-              <Text style={styles.suggestedHeaderText}>Suggested Goals</Text>
-              <Ionicons
-                name={suggestionsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
-                size={30}
-                color={theme.primaryButtonText}
-                style={{ marginLeft: 10 }}  // Adds space between text & toggle icon
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={refreshSuggestions}>
-              <Ionicons name="refresh-circle" size={30} color={theme.primaryButtonText} />
-            </TouchableOpacity>
-          </View>
-          {suggestionsExpanded && suggestedGoals.map((goal) => {
-            const backgroundColor = getColor(goal.dimension);
-            const textColor = getTextColorForBackground(backgroundColor);
-            return (
-              <View
-                key={goal.id}
-                style={[
-                  styles.suggestedGoalItem,
-                  { backgroundColor },
-                ]}
+        <View style={styles.suggestedOuterContainer}>
+          <View
+            style={[
+              styles.gradientBorder,
+              {
+                borderColor: theme.gradientStart,
+              },
+            ]}
+          />
+          <View style={styles.suggestedContainer}>
+            <View style={styles.suggestedHeader}>
+              <TouchableOpacity
+                style={styles.suggestedHeaderToggle}
+                onPress={toggleSuggestions} // Animated toggle
               >
-                <Text style={[styles.goalText, { color: textColor }]}>{goal.name}</Text>
-                <TouchableOpacity
-                  onPress={() => scheduleSuggestedGoal(goal)}
-                  disabled={addedGoals[goal.id]}
-                  style={{ minWidth: 30, alignItems: 'center' }}
+                <Text style={styles.suggestedHeaderText}>Suggested Goals</Text>
+                <Ionicons
+                  name={suggestionsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+                  size={30}
+                  color={theme.primaryButtonText}
+                  style={{ marginLeft: 10 }}  // Adds space between text & toggle icon
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={refreshSuggestions}>
+                <Ionicons name="refresh-circle" size={30} color={theme.primaryButtonText} />
+              </TouchableOpacity>
+            </View>
+            {suggestionsExpanded && suggestedGoals.map((goal) => {
+              const backgroundColor = getColor(goal.dimension);
+              const textColor = getTextColorForBackground(backgroundColor);
+              return (
+                <View
+                  key={goal.id}
+                  style={[
+                    styles.suggestedGoalItem,
+                    { backgroundColor },
+                  ]}
                 >
-                  <Ionicons
-                    name={addedGoals[goal.id] ? "checkmark-circle-outline" : "add-circle-outline"}
-                    size={30}
-                    color={addedGoals[goal.id] ? theme.success : textColor}
-                  />
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+                  <Text style={[styles.goalText, { color: textColor }]}>{goal.name}</Text>
+                  <TouchableOpacity
+                    onPress={() => scheduleSuggestedGoal(goal)}
+                    disabled={addedGoals[goal.id]}
+                    style={{ minWidth: 30, alignItems: 'center' }}
+                  >
+                    <Ionicons
+                      name={addedGoals[goal.id] ? "checkmark-circle-outline" : "add-circle-outline"}
+                      size={30}
+                      color={addedGoals[goal.id] ? theme.success : textColor}
+                    />
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
         </View>
       )}
     </ScrollView>
@@ -551,13 +566,24 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 20,
   },
 
-  suggestedContainer: {
+  suggestedOuterContainer: {
     marginTop: 30,
+    position: 'relative',
+  },
+  gradientBorder: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    borderRadius: 18,
+    borderWidth: 2,
+    zIndex: -1,
+  },
+  suggestedContainer: {
     padding: 20,
     backgroundColor: theme.suggestedContainer,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.border,
     shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -595,6 +621,27 @@ const createStyles = (theme) => StyleSheet.create({
     // fontWeight: 'bold',
     flex: 1,
     marginRight: 10,
+  },
+  starContainer: {
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 3,
+    elevation: 5,
+    position: 'relative',
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  starIcon: {
+    textShadowColor: '#FFD700',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+  },
+  starOutline: {
+    textShadowColor: 'transparent',
+    textShadowRadius: 0,
   },
 });
 
