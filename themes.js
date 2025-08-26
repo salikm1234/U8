@@ -51,6 +51,12 @@ export const themes = {
     // DateTimePicker theme
     dateTimePickerTextColor: '#000000',
     dateTimePickerBackgroundColor: '#FFFFFF',
+    
+    // Activity Rings colors
+    activityRingGoals: '#007AFF',
+    activityRingHabits: '#34C759',
+    activityRingRoutines: '#FF3B30',
+    activityRingBackground: 'rgba(0, 0, 0, 0.1)',
   },
   
   dark: {
@@ -105,6 +111,12 @@ export const themes = {
     // DateTimePicker theme
     dateTimePickerTextColor: '#F5F5F7',
     dateTimePickerBackgroundColor: '#1F1F1F',
+    
+    // Activity Rings colors
+    activityRingGoals: '#007AFF',
+    activityRingHabits: '#34C759',
+    activityRingRoutines: '#FF3B30',
+    activityRingBackground: 'rgba(255, 255, 255, 0.1)',
   }
 };
 

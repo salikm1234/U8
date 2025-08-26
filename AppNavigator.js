@@ -32,6 +32,7 @@ import RoutineEditorScreen from './RoutineEditorScreen';
 import RoutineActionScreen from './RoutineActionScreen';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AddTaskScreen from './AddTaskScreen';
+import ActivityRingsScreen from './ActivityRingsScreen';
 import { getUniversalTime } from './dateUtils';
 import { useTheme } from './ThemeContext';
 
@@ -139,6 +140,14 @@ export default function AppNavigator() {
           options={{
             headerShown: false,
             tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
+          }}
+        />
+        <Tab.Screen
+          name="Activity"
+          component={ActivityRingsScreen}
+          options={{
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => <Ionicons name="fitness" color={color} size={size} />,
           }}
         />
         <Tab.Screen
