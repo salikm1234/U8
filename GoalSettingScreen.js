@@ -12,7 +12,7 @@ import { useTheme } from './ThemeContext';
 import { getContrastColor } from './colorUtils';
 
 const GoalSettingsScreen = () => {
-  const { theme, colorScheme } = useTheme();
+  const { theme, colorScheme, accessibilityMode, toggleAccessibility } = useTheme();
   const [selectedDimension, setSelectedDimension] = useState('Physical');
   const [customGoalText, setCustomGoalText] = useState('');
   const [customGoals, setCustomGoals] = useState({});
@@ -87,10 +87,21 @@ const GoalSettingsScreen = () => {
     Spiritual: '#EE82EE',
   };
   
+  const accessibleColors = {
+    Physical: '#C44000',
+    Mental: '#0066CC',
+    Environmental: '#2A7F2A',
+    Financial: '#B8860B',
+    Intellectual: '#663399',
+    Occupational: '#147575',
+    Social: '#CC2200',
+    Spiritual: '#8B008B',
+  };
+  
   // ✅ Initialize default + current color arrays in AsyncStorage
   useEffect(() => {
     initializeColorStorage();
-  }, []);
+  }, [accessibilityMode]);
   
   // 🏃‍♂️ Initialize AsyncStorage with separate default and mutable arrays
   const initializeColorStorage = async () => {
@@ -101,15 +112,17 @@ const GoalSettingsScreen = () => {
       const storedDefaults = await AsyncStorage.getItem(defaultsKey);
       const storedCurrent = await AsyncStorage.getItem(currentKey);
   
+      // Use accessible colors if accessibility mode is on
+      const colorsToUse = accessibilityMode ? accessibleColors : defaultColors;
+  
       // 🌈 Save default colors if missing (permanent constants)
       if (!storedDefaults) {
         await AsyncStorage.setItem(defaultsKey, JSON.stringify(defaultColors));
       }
   
-      // 🎨 If current colors missing, copy defaults to current
-      if (!storedCurrent) {
-        await AsyncStorage.setItem(currentKey, JSON.stringify(defaultColors));
-        setDimensionColors(defaultColors);
+      // 🎨 If current colors missing or accessibility mode, use appropriate colors
+      if (!storedCurrent || accessibilityMode) {
+        setDimensionColors(colorsToUse);
       } else {
         setDimensionColors(JSON.parse(storedCurrent));
       }
@@ -621,6 +634,28 @@ const GoalSettingsScreen = () => {
         ))}
         <Button title="Reset All Colors to Default" onPress={resetAllColors} />
         <Button title="Reset All Dimensions" onPress={resetAllGoals} />
+        <TouchableOpacity
+          style={{
+            backgroundColor: accessibilityMode ? theme.success : theme.primaryButton,
+            borderRadius: 10,
+            paddingVertical: 14,
+            paddingHorizontal: 20,
+            marginTop: 16,
+            marginBottom: 16,
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: accessibilityMode ? theme.success : theme.primaryButtonText,
+          }}
+          onPress={toggleAccessibility}
+        >
+          <Text style={{
+            color: accessibilityMode ? '#FFFFFF' : theme.primaryButtonText,
+            fontSize: 16,
+            fontWeight: 'bold'
+          }}>
+            {accessibilityMode ? 'Switch to Standard Color Themes' : 'Switch to Accessible Color Themes'}
+          </Text>
+        </TouchableOpacity>
         
         <ColorPickerModal
   visible={colorPickerVisible}

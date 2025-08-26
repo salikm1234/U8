@@ -1,3 +1,41 @@
+// Calculate relative luminance for WCAG contrast calculations
+const getLuminance = (hex) => {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  
+  const sRGB = [r, g, b].map(val => {
+    if (val <= 0.03928) {
+      return val / 12.92;
+    }
+    return Math.pow((val + 0.055) / 1.055, 2.4);
+  });
+  
+  return 0.2126 * sRGB[0] + 0.7152 * sRGB[1] + 0.0722 * sRGB[2];
+};
+
+// Calculate contrast ratio between two colors (WCAG formula)
+export const calculateContrastRatio = (color1, color2) => {
+  const lum1 = getLuminance(color1);
+  const lum2 = getLuminance(color2);
+  const lighter = Math.max(lum1, lum2);
+  const darker = Math.min(lum1, lum2);
+  
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
+// Check if contrast meets WCAG AA standards
+export const meetsWCAGAA = (color1, color2, isLargeText = false) => {
+  const ratio = calculateContrastRatio(color1, color2);
+  return isLargeText ? ratio >= 3 : ratio >= 4.5;
+};
+
+// Check if contrast meets WCAG AAA standards
+export const meetsWCAGAAA = (color1, color2, isLargeText = false) => {
+  const ratio = calculateContrastRatio(color1, color2);
+  return isLargeText ? ratio >= 4.5 : ratio >= 7;
+};
+
 export const getContrastColor = (color, colorScheme) => {
   if (!color) return colorScheme === 'dark' ? '#FFFFFF' : '#000000';
   

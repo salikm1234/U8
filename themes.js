@@ -59,6 +59,66 @@ export const themes = {
     activityRingBackground: 'rgba(0, 0, 0, 0.1)',
   },
   
+  lightAccessible: {
+    // Background colors
+    background: '#FFFFFF',
+    cardBackground: '#FAFAFA',
+    modalBackground: '#FFFFFF',
+    inputBackground: '#FFFFFF',
+    
+    // Text colors - Enhanced contrast
+    text: '#000000',
+    textSecondary: '#404040',
+    placeholderText: '#606060',
+    
+    // Border colors - Darker for better visibility
+    border: '#767676',
+    separator: '#767676',
+    
+    // Button colors - Higher contrast
+    primaryButton: '#E0F7FF',
+    primaryButtonText: '#0066CC',
+    secondaryButton: '#E0E0E0',
+    secondaryButtonText: '#000000',
+    
+    // Status colors - WCAG AA compliant
+    success: '#2E7D32',
+    error: '#C62828',
+    warning: '#F57C00',
+    info: '#0277BD',
+    
+    // Special UI elements
+    shadowColor: '#000000',
+    tabBarBackground: '#FFFFFF',
+    tabBarActiveTint: '#0066CC',
+    tabBarInactiveTint: '#606060',
+    
+    // Suggested goals specific
+    suggestedContainer: '#E8F6FF',
+    suggestedBorder: '#000000',
+    
+    // Calendar theme
+    calendarBackground: '#FFFFFF',
+    calendarTextSectionTitleColor: '#000000',
+    calendarSelectedDayBackgroundColor: '#0066CC',
+    calendarSelectedDayTextColor: '#FFFFFF',
+    calendarTodayTextColor: '#0066CC',
+    calendarDayTextColor: '#000000',
+    calendarTextDisabledColor: '#767676',
+    calendarMonthTextColor: '#000000',
+    calendarArrowColor: '#0066CC',
+    
+    // DateTimePicker theme
+    dateTimePickerTextColor: '#000000',
+    dateTimePickerBackgroundColor: '#FFFFFF',
+    
+    // Activity Rings colors - Higher contrast
+    activityRingGoals: '#0055CC',
+    activityRingHabits: '#2E7D32',
+    activityRingRoutines: '#C62828',
+    activityRingBackground: 'rgba(0, 0, 0, 0.2)',
+  },
+  
   dark: {
     // Background colors - Modern, deep but not harsh
     background: '#0F0F0F',
@@ -117,6 +177,66 @@ export const themes = {
     activityRingHabits: '#34C759',
     activityRingRoutines: '#FF3B30',
     activityRingBackground: 'rgba(255, 255, 255, 0.1)',
+  },
+  
+  darkAccessible: {
+    // Background colors - Pure blacks for maximum contrast
+    background: '#000000',
+    cardBackground: '#1A1A1A',
+    modalBackground: '#1A1A1A',
+    inputBackground: '#2A2A2A',
+    
+    // Text colors - Maximum contrast whites
+    text: '#FFFFFF',
+    textSecondary: '#C0C0C0',
+    placeholderText: '#9A9A9A',
+    
+    // Border colors - Visible but not overwhelming
+    border: '#808080',
+    separator: '#808080',
+    
+    // Button colors - High contrast
+    primaryButton: '#2A2A2A',
+    primaryButtonText: '#66B3FF',
+    secondaryButton: '#3A3A3A',
+    secondaryButtonText: '#FFFFFF',
+    
+    // Status colors - WCAG AA compliant for dark backgrounds
+    success: '#5CB85C',
+    error: '#FF6B6B',
+    warning: '#FFB347',
+    info: '#66B3FF',
+    
+    // Special UI elements
+    shadowColor: '#000000',
+    tabBarBackground: '#1A1A1A',
+    tabBarActiveTint: '#66B3FF',
+    tabBarInactiveTint: '#9A9A9A',
+    
+    // Suggested goals specific
+    suggestedContainer: '#2A2A2A',
+    suggestedBorder: '#66B3FF',
+    
+    // Calendar theme
+    calendarBackground: '#1A1A1A',
+    calendarTextSectionTitleColor: '#FFFFFF',
+    calendarSelectedDayBackgroundColor: '#66B3FF',
+    calendarSelectedDayTextColor: '#000000',
+    calendarTodayTextColor: '#66B3FF',
+    calendarDayTextColor: '#FFFFFF',
+    calendarTextDisabledColor: '#808080',
+    calendarMonthTextColor: '#FFFFFF',
+    calendarArrowColor: '#66B3FF',
+    
+    // DateTimePicker theme
+    dateTimePickerTextColor: '#FFFFFF',
+    dateTimePickerBackgroundColor: '#1A1A1A',
+    
+    // Activity Rings colors - Higher contrast
+    activityRingGoals: '#5C9AFF',
+    activityRingHabits: '#5CB85C',
+    activityRingRoutines: '#FF6B6B',
+    activityRingBackground: 'rgba(255, 255, 255, 0.3)',
   }
 };
 
