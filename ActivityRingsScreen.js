@@ -52,25 +52,34 @@ const ActivityRingsScreen = () => {
       if (!allHabitsData) return { completed: 0, total: 0, percentage: 0 };
       
       const parsedHabits = JSON.parse(allHabitsData);
-      const dateHabits = parsedHabits[date]?.habits || [];
+      const dateData = parsedHabits[date];
       
-      if (dateHabits.length === 0) return { completed: 0, total: 0, percentage: 0 };
+      if (!dateData || !dateData.habits || dateData.habits.length === 0) {
+        return { completed: 0, total: 0, percentage: 0 };
+      }
+      
+      const dateHabits = dateData.habits;
+      const counts = dateData.counts || {};
       
       let totalTarget = 0;
       let totalCompleted = 0;
+      let habitsCompleted = 0;
       
       dateHabits.forEach(habit => {
-        const count = habit.count || 0;
+        const count = counts[habit.id] || 0;
         const target = habit.target || 1;
         totalTarget += target;
         totalCompleted += Math.min(count, target);
+        
+        if (count >= target) {
+          habitsCompleted++;
+        }
       });
       
       const percentage = totalTarget > 0 ? (totalCompleted / totalTarget) : 0;
-      const completed = dateHabits.filter(h => (h.count || 0) >= (h.target || 1)).length;
       
       return { 
-        completed, 
+        completed: habitsCompleted, 
         total: dateHabits.length, 
         percentage 
       };
@@ -151,51 +160,103 @@ const ActivityRingsScreen = () => {
   const loadMarkedDates = async () => {
     const marks = {};
     
-    // Get all dates that have any data (goals, habits, or routines)
-    const keys = await AsyncStorage.getAllKeys();
-    
-    // Check for dates with goals
-    const dateKeys = keys.filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key));
-    for (const date of dateKeys) {
-      const goalsData = await AsyncStorage.getItem(date);
-      if (goalsData && JSON.parse(goalsData).length > 0) {
-        marks[date] = { marked: true, dotColor: '#007AFF' };
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      
+      // Process each potential date
+      const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+      const allDates = new Set();
+      
+      // Get all valid dates from goals
+      const dateKeys = keys.filter(key => datePattern.test(key));
+      for (const date of dateKeys) {
+        allDates.add(date);
       }
-    }
-    
-    // Check for dates with habits
-    const habitsData = await AsyncStorage.getItem('allHabits');
-    if (habitsData) {
-      const habits = JSON.parse(habitsData);
-      Object.keys(habits).forEach(date => {
-        if (habits[date]?.habits?.length > 0) {
-          marks[date] = { marked: true, dotColor: marks[date] ? '#FFD700' : '#34C759' };
+      
+      // Get all dates from habits
+      const habitsData = await AsyncStorage.getItem('allHabits');
+      if (habitsData) {
+        const habits = JSON.parse(habitsData);
+        Object.keys(habits).forEach(date => {
+          if (datePattern.test(date)) {
+            allDates.add(date);
+          }
+        });
+      }
+      
+      // Get all dates from activity rings
+      const ringKeys = keys.filter(key => key.startsWith('activityRings_'));
+      for (const key of ringKeys) {
+        const date = key.replace('activityRings_', '');
+        if (datePattern.test(date)) {
+          allDates.add(date);
         }
-      });
-    }
-    
-    // Check saved ring data
-    const ringKeys = keys.filter(key => key.startsWith('activityRings_'));
-    for (const key of ringKeys) {
-      const date = key.replace('activityRings_', '');
-      const data = await AsyncStorage.getItem(key);
-      if (data) {
-        const parsed = JSON.parse(data);
-        marks[date] = {
-          marked: true,
-          dotColor: parsed.allRingsClosed ? '#34C759' : '#FFD700',
-        };
       }
+      
+      // Now process each date to determine dot color
+      for (const date of allDates) {
+        // Calculate progress for each ring
+        const [goals, habits, routines] = await Promise.all([
+          calculateGoalsProgress(date),
+          calculateHabitsProgress(date),
+          calculateRoutinesProgress(date)
+        ]);
+        
+        const hasGoals = goals.total > 0;
+        const hasHabits = habits.total > 0;
+        const hasRoutines = routines.total > 0;
+        
+        // Skip if no data exists for this date
+        if (!hasGoals && !hasHabits && !hasRoutines) {
+          continue;
+        }
+        
+        // Count how many rings exist and how many are complete
+        let totalRings = 0;
+        let completedRings = 0;
+        
+        if (hasGoals) {
+          totalRings++;
+          if (goals.percentage >= 1) completedRings++;
+        }
+        
+        if (hasHabits) {
+          totalRings++;
+          if (habits.percentage >= 1) completedRings++;
+        }
+        
+        if (hasRoutines) {
+          totalRings++;
+          if (routines.percentage >= 1) completedRings++;
+        }
+        
+        // Determine dot color based on completion
+        let dotColor;
+        if (completedRings === 0) {
+          // Grey: data exists but nothing completed
+          dotColor = '#8E8E93';
+        } else if (completedRings === totalRings) {
+          // Gold: all rings completed
+          dotColor = '#FFD700';
+        } else {
+          // Green: partial completion
+          dotColor = '#34C759';
+        }
+        
+        marks[date] = { marked: true, dotColor };
+      }
+      
+      // Mark selected date
+      marks[selectedDate] = {
+        ...marks[selectedDate],
+        selected: true,
+        selectedColor: theme.primaryButtonText,
+      };
+      
+      setMarkedDates(marks);
+    } catch (error) {
+      console.error('Error loading marked dates:', error);
     }
-    
-    // Mark selected date
-    marks[selectedDate] = {
-      ...marks[selectedDate],
-      selected: true,
-      selectedColor: theme.primaryButtonText,
-    };
-    
-    setMarkedDates(marks);
   };
 
   useFocusEffect(
@@ -343,6 +404,19 @@ const ActivityRingsScreen = () => {
               textDisabledColor: theme.calendarTextDisabledColor,
               monthTextColor: theme.calendarMonthTextColor,
               arrowColor: theme.calendarArrowColor,
+            }}
+            renderHeader={(date) => {
+              const monthNames = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+              ];
+              const month = monthNames[date.getMonth()];
+              const year = date.getFullYear();
+              return (
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: theme.text }}>
+                  {month} {year}
+                </Text>
+              );
             }}
           />
         </View>
