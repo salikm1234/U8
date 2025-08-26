@@ -112,7 +112,8 @@ const ActivityRingsScreen = () => {
       for (const routine of routines) {
         if (routine.tasks && routine.tasks.length > 0) {
           // Check if this routine is scheduled for the day
-          const dayOfWeek = new Date(date).getDay();
+          const [year, month, day] = date.split('-');
+          const dayOfWeek = new Date(year, month - 1, day).getDay();
           const isWeekday = dayOfWeek !== 0 && dayOfWeek !== 6;
           const isScheduled = (routine.weekdays && isWeekday) || (routine.weekends && !isWeekday);
             
