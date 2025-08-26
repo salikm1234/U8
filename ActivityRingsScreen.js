@@ -29,8 +29,11 @@ const ActivityRingsScreen = () => {
   const formatDateDisplay = (dateString) => {
     const [year, month, day] = dateString.split('-');
     const date = new Date(year, month - 1, day);
-    const monthName = date.toLocaleDateString('en-US', { month: 'long' });
-    return `${monthName} ${year}`;
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
 
   // Calculate goals progress
@@ -440,6 +443,7 @@ const ActivityRingsScreen = () => {
       {showCalendar && (
         <View style={styles.calendarContainer}>
           <Calendar
+            key={`calendar-${colorScheme}`}
             current={selectedDate}
             onDayPress={onDayPress}
             markedDates={markedDates}
@@ -489,9 +493,11 @@ const createStyles = (theme) => StyleSheet.create({
     paddingBottom: 20,
   },
   dateText: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
     color: theme.text,
+    flex: 1,
+    marginRight: 10,
   },
   todayButton: {
     paddingHorizontal: 16,
