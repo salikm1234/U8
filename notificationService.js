@@ -41,3 +41,63 @@ export const sendHabitCompletionNotification = async (habitName) => {
     trigger: null, // ✅ Sends immediately
   });
 };
+
+// ✅ Function to trigger a goals ring completion notification
+export const sendGoalRingCompletionNotification = async () => {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "💙 Goals Ring Closed!",
+      body: "You've completed all your goals for today! Amazing work!",
+      sound: 'default',
+      badge: 1,
+      priority: 'max',
+      vibrate: [0, 250, 250, 250],
+    },
+    trigger: null,
+  });
+};
+
+// ✅ Function to trigger a habits ring completion notification
+export const sendHabitRingCompletionNotification = async () => {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "💚 Habits Ring Closed!",
+      body: "All habits completed! You're building great consistency!",
+      sound: 'default',
+      badge: 1,
+      priority: 'max',
+      vibrate: [0, 250, 250, 250],
+    },
+    trigger: null,
+  });
+};
+
+// ✅ Function to trigger a routines ring completion notification
+export const sendRoutineRingCompletionNotification = async () => {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "❤️ Routines Ring Closed!",
+      body: "All routine tasks completed! You're crushing it today!",
+      sound: 'default',
+      badge: 1,
+      priority: 'max',
+      vibrate: [0, 250, 250, 250],
+    },
+    trigger: null,
+  });
+};
+
+// ✅ Function to trigger all rings completion notification
+export const sendAllRingsCompletionNotification = async () => {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "🏆 Perfect Day!",
+      body: "All activity rings closed! You've achieved excellence today!",
+      sound: 'default',
+      badge: 1,
+      priority: 'max',
+      vibrate: [0, 250, 250, 250],
+    },
+    trigger: null,
+  });
+};

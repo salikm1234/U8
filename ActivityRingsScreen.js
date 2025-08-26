@@ -7,6 +7,12 @@ import ActivityRing from './ActivityRing';
 import { getUniversalTime } from './dateUtils';
 import { useTheme } from './ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { 
+  sendGoalRingCompletionNotification, 
+  sendHabitRingCompletionNotification,
+  sendRoutineRingCompletionNotification,
+  sendAllRingsCompletionNotification 
+} from './notificationService';
 
 const ActivityRingsScreen = () => {
   const { theme, colorScheme } = useTheme();
@@ -137,6 +143,10 @@ const ActivityRingsScreen = () => {
 
   // Load all ring data for selected date
   const loadRingsData = async (date) => {
+    // Get previous ring state to detect completions
+    const previousDataStr = await AsyncStorage.getItem(`activityRings_${date}`);
+    const previousData = previousDataStr ? JSON.parse(previousDataStr) : null;
+    
     const [goals, habits, routines] = await Promise.all([
       calculateGoalsProgress(date),
       calculateHabitsProgress(date),
@@ -145,12 +155,52 @@ const ActivityRingsScreen = () => {
     
     setRingsData({ goals, habits, routines });
     
+    // Only check for notifications if this is today's date
+    if (date === getUniversalTime().fullDate) {
+      // Check if any rings just reached 100% completion
+      const goalsJustCompleted = goals.total > 0 && goals.percentage >= 1 && 
+        (!previousData || previousData.goals.percentage < 1);
+      const habitsJustCompleted = habits.total > 0 && habits.percentage >= 1 && 
+        (!previousData || previousData.habits.percentage < 1);
+      const routinesJustCompleted = routines.total > 0 && routines.percentage >= 1 && 
+        (!previousData || previousData.routines.percentage < 1);
+      
+      // Send individual ring completion notifications
+      if (goalsJustCompleted) {
+        await sendGoalRingCompletionNotification();
+      }
+      if (habitsJustCompleted) {
+        await sendHabitRingCompletionNotification();
+      }
+      if (routinesJustCompleted) {
+        await sendRoutineRingCompletionNotification();
+      }
+      
+      // Check if all rings are now closed
+      const allRingsNowClosed = 
+        (goals.total === 0 || goals.percentage >= 1) &&
+        (habits.total === 0 || habits.percentage >= 1) &&
+        (routines.total === 0 || routines.percentage >= 1) &&
+        (goals.total > 0 || habits.total > 0 || routines.total > 0);
+      
+      const allRingsWereClosed = previousData && previousData.allRingsClosed;
+      
+      // Send all rings completion notification only if all rings just became closed
+      if (allRingsNowClosed && !allRingsWereClosed) {
+        await sendAllRingsCompletionNotification();
+      }
+    }
+    
     // Save to storage for history
     const ringData = {
       goals,
       habits,
       routines,
-      allRingsClosed: goals.percentage >= 1 && habits.percentage >= 1 && routines.percentage >= 1
+      allRingsClosed: 
+        (goals.total === 0 || goals.percentage >= 1) &&
+        (habits.total === 0 || habits.percentage >= 1) &&
+        (routines.total === 0 || routines.percentage >= 1) &&
+        (goals.total > 0 || habits.total > 0 || routines.total > 0)
     };
     
     await AsyncStorage.setItem(`activityRings_${date}`, JSON.stringify(ringData));

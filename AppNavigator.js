@@ -143,14 +143,6 @@ export default function AppNavigator() {
           }}
         />
         <Tab.Screen
-          name="Activity"
-          component={ActivityRingsScreen}
-          options={{
-            headerShown: false,
-            tabBarIcon: ({ color, size }) => <Ionicons name="fitness" color={color} size={size} />,
-          }}
-        />
-        <Tab.Screen
           name="Calendar"
           component={CalendarScreen}
           options={{
@@ -171,6 +163,14 @@ export default function AppNavigator() {
           options={{
             headerShown: false,
             tabBarIcon: ({ color, size }) => <Ionicons name={getRoutineIcon()} color={color} size={size} />,
+          }}
+        />
+        <Tab.Screen
+          name="Activity"
+          component={ActivityRingsScreen}
+          options={{
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => <Ionicons name="fitness" color={color} size={size} />,
           }}
         />
       </Tab.Navigator>
