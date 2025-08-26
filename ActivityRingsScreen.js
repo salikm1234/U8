@@ -113,9 +113,8 @@ const ActivityRingsScreen = () => {
         if (routine.tasks && routine.tasks.length > 0) {
           // Check if this routine is scheduled for the day
           const dayOfWeek = new Date(date).getDay();
-          const isScheduled = routine.weekdays || 
-            (routine.weekendOnly && (dayOfWeek === 0 || dayOfWeek === 6)) ||
-            (!routine.weekdays && !routine.weekendOnly);
+          const isWeekday = dayOfWeek !== 0 && dayOfWeek !== 6;
+          const isScheduled = (routine.weekdays && isWeekday) || (routine.weekends && !isWeekday);
             
           if (isScheduled) {
             const completionKey = `completion-${routine.id}-${date}`;
