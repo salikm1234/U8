@@ -37,6 +37,7 @@ import { configureNotifications, sendHabitCompletionNotification } from './notif
 import { Picker } from '@react-native-picker/picker';
 import { getColorForDimension } from './getColorForDimension';
 import { useTheme } from './ThemeContext';
+import { getContrastColor } from './colorUtils';
 
 // Enable layout animations on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -542,7 +543,7 @@ const HabitTrackingScreen = ({navigation}) => {
                       <Text style={{ fontWeight: 'bold', fontSize: 15, color: theme.secondaryButtonText }}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={addNewHabit} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: theme.primaryButtonText }}>
-                      <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#fff' }}>Add</Text>
+                      <Text style={{ fontWeight: 'bold', fontSize: 15, color: getContrastColor(theme.primaryButtonText, colorScheme) }}>Add</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -578,7 +579,7 @@ const createStyles = (theme, colorScheme) => StyleSheet.create({
   newHabitHeaderText: { fontSize: 20, fontWeight: 'bold', color: theme.text },
   input: { borderWidth: 1, borderRadius: 10, padding: 10, marginTop: 10, borderColor: theme.border, backgroundColor: theme.inputBackground, color: theme.text },
   addButton: { backgroundColor: theme.primaryButtonText, padding: 15, borderRadius: 10, marginTop: 10, alignItems: 'center' },
-  addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  addButtonText: { color: getContrastColor(theme.primaryButtonText, colorScheme), fontWeight: 'bold', fontSize: 18 },
   summaryButton: {
     fontSize: 18,
     color: theme.primaryButtonText,

@@ -9,6 +9,7 @@ import { goals as presetGoals } from './goals'; // Assuming you have a goals.js 
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from './ThemeContext';
+import { getContrastColor } from './colorUtils';
 
 const GoalSettingsScreen = () => {
   const { theme, colorScheme } = useTheme();
@@ -324,7 +325,7 @@ const GoalSettingsScreen = () => {
             setPlanEndDate(selectedDate);
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Plan</Text>
+          <Text style={{ color: getContrastColor(dimensionColors[dimension] || '#00BFFF', colorScheme), fontWeight: 'bold', fontSize: 16 }}>Plan</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => removeGoal(dimension, goal.id, !!goal.id.startsWith('custom-'))}>
           <Ionicons name="trash" size={26} color="#e74c3c" />
@@ -546,7 +547,7 @@ const GoalSettingsScreen = () => {
                       setColorPickerVisible(true);
                     }}
                   >
-                    <Ionicons name="color-palette" size={24} color="#fff" />
+                    <Ionicons name="color-palette" size={24} color={getContrastColor(dimensionColors[dimension] || '#ccc', colorScheme)} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: theme.error, backgroundColor: theme.cardBackground, alignItems: 'center', justifyContent: 'center' }}
@@ -703,7 +704,7 @@ const GoalSettingsScreen = () => {
                     <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.secondaryButtonText }}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={confirmPlanGoal} style={{ paddingVertical: 10, paddingHorizontal: 24, borderRadius: 10, backgroundColor: theme.primaryButtonText }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#fff' }}>Plan</Text>
+                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: getContrastColor(theme.primaryButtonText, colorScheme) }}>Plan</Text>
                   </TouchableOpacity>
                 </View>
               </View>

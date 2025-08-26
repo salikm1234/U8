@@ -25,7 +25,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager, ScrollView, FlatList } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -34,6 +34,7 @@ import { getColorForDimension } from './getColorForDimension';
 import { goals as presetGoals } from './goals';
 import { useTheme } from './ThemeContext';
 import RingChart from './RingChart';
+import { adjustColorForBadge, getContrastColor } from './colorUtils';
 
 const HomeScreen = ({ navigation }) => {
   const { theme, colorScheme } = useTheme();
@@ -45,56 +46,15 @@ const HomeScreen = ({ navigation }) => {
     return name;
   };
   
-  // Function to adjust color for better contrast on badge
-  const getContrastColor = (color) => {
-    if (!color) return theme.background;
-    
-    // In dark mode (white badge), darken light colors
-    if (colorScheme === 'dark') {
-      // Convert hex to RGB
-      const r = parseInt(color.slice(1, 3), 16);
-      const g = parseInt(color.slice(3, 5), 16);
-      const b = parseInt(color.slice(5, 7), 16);
-      
-      // Calculate luminance
-      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      
-      // If color is too light, darken it
-      if (luminance > 0.6) {
-        const factor = 0.4; // Darken by 60%
-        const newR = Math.floor(r * factor);
-        const newG = Math.floor(g * factor);
-        const newB = Math.floor(b * factor);
-        return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
-      }
-    }
-    // In light mode (black badge), lighten dark colors
-    else {
-      const r = parseInt(color.slice(1, 3), 16);
-      const g = parseInt(color.slice(3, 5), 16);
-      const b = parseInt(color.slice(5, 7), 16);
-      
-      // Calculate luminance
-      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      
-      // If color is too dark, lighten it
-      if (luminance < 0.3) {
-        const factor = 2.5; // Lighten significantly
-        const newR = Math.min(255, Math.floor(r * factor));
-        const newG = Math.min(255, Math.floor(g * factor));
-        const newB = Math.min(255, Math.floor(b * factor));
-        return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
-      }
-    }
-    
-    return color;
-  };
   // State for managing daily goals and their completion status
   const [dailyGoals, setDailyGoals] = useState([]);
   
   // State for dimension data including counts and colors
   const [dimensionData, setDimensionData] = useState([]);
   const [dimensionColors, setDimensionColors] = useState({});
+  
+  // State for view mode (ring or circles)
+  const [viewMode, setViewMode] = useState('ring');
   
   // State for today's date and suggested goals
   const [todayDate, setTodayDate] = useState(getUniversalTime().fullDate);
@@ -262,9 +222,37 @@ const HomeScreen = ({ navigation }) => {
     setSuggestionsExpanded(!suggestionsExpanded);
   };
 
+  /**
+   * Load view mode preference from AsyncStorage
+   */
+  const loadViewMode = async () => {
+    try {
+      const savedMode = await AsyncStorage.getItem('homeViewMode');
+      if (savedMode) {
+        setViewMode(savedMode);
+      }
+    } catch (error) {
+      console.error('Error loading view mode:', error);
+    }
+  };
+
+  /**
+   * Toggle between ring and circles view and save preference
+   */
+  const toggleViewMode = async () => {
+    const newMode = viewMode === 'ring' ? 'circles' : 'ring';
+    setViewMode(newMode);
+    try {
+      await AsyncStorage.setItem('homeViewMode', newMode);
+    } catch (error) {
+      console.error('Error saving view mode:', error);
+    }
+  };
+
   // Load data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      loadViewMode();           // Load view mode preference
       loadDimensionColors();    // Load all colors first
       loadHabits();             // Load today's habits (calls loadGoals)
       loadSuggestedGoals();     // Load suggestions
@@ -299,9 +287,9 @@ const HomeScreen = ({ navigation }) => {
         ]}
         onPress={() => navigation.navigate('DimensionGoalsScreen', { dimensionName: item.name })}
       >
-        <Text style={styles.dimensionText}>{getDimensionDisplayName(item.name)}</Text>
+        <Text style={[styles.dimensionText, { color: getContrastColor(dimensionColors[item.name] || '#D3D3D3', colorScheme) }]}>{getDimensionDisplayName(item.name)}</Text>
         <View style={styles.badge}>
-          <Text style={[styles.badgeText, { color: getContrastColor(dimensionColors[item.name]) || theme.background, marginRight: hasHabits ? 2 : 0 }]}>{item.count}</Text>
+          <Text style={[styles.badgeText, { color: adjustColorForBadge(dimensionColors[item.name], colorScheme, theme) || theme.background, marginRight: hasHabits ? 2 : 0 }]}>{item.count}</Text>
           {hasHabits && (
             <Ionicons name="star" size={16} color="#FFD700" />
           )}
@@ -318,42 +306,64 @@ const HomeScreen = ({ navigation }) => {
       <View>
         <Text style={styles.header}>Today's Wellness Dimensions</Text>
 
-        <View style={styles.topContainer}>
+        <View style={styles.buttonRow}>
           <TouchableOpacity
-            style={styles.goalsButton}
+            style={[styles.goalsButton, { flex: 1, marginRight: 8 }]}
             onPress={() => navigation.navigate('GoalSetting', { date: getUniversalTime().fullDate })}
           >
-            <Ionicons name="add-circle" size={40} color={theme.primaryButtonText} />
-            <Text style={styles.goalsButtonText}>Plan a Goal</Text>
+            <Ionicons name="add-circle" size={32} color={theme.primaryButtonText} />
+            <Text style={[styles.goalsButtonText, { fontSize: 16 }]}>Plan a Goal</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.viewToggleButton}
+            onPress={toggleViewMode}
+          >
+            <Ionicons 
+              name={viewMode === 'ring' ? 'pie-chart' : 'grid'} 
+              size={24} 
+              color={theme.primaryButtonText} 
+            />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Ring chart display - shows wellness dimensions with activity counts */}
+      {/* Dimension display - either ring chart or circles based on view mode */}
       {dimensionData.length > 0 ? (
-        <View style={styles.chartContainer}>
-          <RingChart
-            data={dimensionData.filter(d => d.count > 0).map(d => ({
-              ...d,
-              color: dimensionColors[d.name] || '#D3D3D3',
-              hasHabits: habitsByDimension[d.name] && habitsByDimension[d.name].length > 0
-            }))}
-            onSlicePress={(item) => navigation.navigate('DimensionGoalsScreen', { dimensionName: item.name })}
-            size={280}
-            innerRadius={85}
-            outerRadius={120}
-          />
-          
-          {/* Color key/legend */}
-          <View style={styles.legendContainer}>
-            {dimensionData.filter(d => d.count > 0).map((dimension) => (
-              <View key={dimension.name} style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: dimensionColors[dimension.name] || '#D3D3D3' }]} />
-                <Text style={styles.legendText}>{getDimensionDisplayName(dimension.name)}</Text>
-              </View>
-            ))}
+        viewMode === 'ring' ? (
+          <View style={styles.chartContainer}>
+            <RingChart
+              data={dimensionData.filter(d => d.count > 0).map(d => ({
+                ...d,
+                color: dimensionColors[d.name] || '#D3D3D3',
+                hasHabits: habitsByDimension[d.name] && habitsByDimension[d.name].length > 0
+              }))}
+              onSlicePress={(item) => navigation.navigate('DimensionGoalsScreen', { dimensionName: item.name })}
+              size={280}
+              innerRadius={85}
+              outerRadius={120}
+            />
+            
+            {/* Color key/legend */}
+            <View style={styles.legendContainer}>
+              {dimensionData.filter(d => d.count > 0).map((dimension) => (
+                <View key={dimension.name} style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: dimensionColors[dimension.name] || '#D3D3D3' }]} />
+                  <Text style={styles.legendText}>{getDimensionDisplayName(dimension.name)}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        ) : (
+          <FlatList
+            data={dimensionData.filter(d => d.count > 0)}
+            renderItem={renderDimensionItem}
+            keyExtractor={(item) => item.name}
+            numColumns={2}
+            columnWrapperStyle={styles.dimensionRow}
+            contentContainerStyle={styles.dimensionList}
+          />
+        )
       ) : (
         <Text style={styles.noGoalsText}>No goals scheduled for today.</Text>
       )}
@@ -386,7 +396,7 @@ const HomeScreen = ({ navigation }) => {
                 { backgroundColor: dimensionColors[goal.dimension] || '#D3D3D3' },
               ]}
             >
-              <Text style={styles.goalText}>{goal.name}</Text>
+              <Text style={[styles.goalText, { color: getContrastColor(dimensionColors[goal.dimension] || '#D3D3D3', colorScheme) }]}>{goal.name}</Text>
               <TouchableOpacity
                 onPress={() => scheduleSuggestedGoal(goal)}
                 disabled={addedGoals[goal.id]}
@@ -429,6 +439,29 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: 20,
   },
   
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  
+  viewToggleButton: {
+    width: 56,
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.secondaryButton,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  
   goalsButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -438,9 +471,6 @@ const createStyles = (theme) => StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: theme.primaryButton,
     borderRadius: 16,
-    width: '100%',
-    marginBottom: 20,
-    marginTop: 10,
     shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -550,7 +580,6 @@ const createStyles = (theme) => StyleSheet.create({
   },
   dimensionText: {
     fontSize: 16,
-    color: '#FFFFFF',
     textAlign: 'center',
     fontWeight: '500',
     // textShadowColor: 'rgba(0, 0, 0, 0.3)',
@@ -647,7 +676,6 @@ const createStyles = (theme) => StyleSheet.create({
   goalText: {
     fontSize: 18,
     // fontWeight: 'bold',
-    color: '#000',
     flex: 1,
     marginRight: 10,
   },

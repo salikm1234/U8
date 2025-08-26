@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getColorForDimension } from './getColorForDimension';
 import { useTheme } from './ThemeContext';
+import { getContrastColor } from './colorUtils';
 
 const iconList = [
   { name: 'sunny', label: 'Morning' },
@@ -22,7 +23,7 @@ const iconList = [
 ];
 
 const RoutineEditorScreen = ({ navigation, route }) => {
-  const { theme } = useTheme();
+  const { theme, colorScheme } = useTheme();
   const editingRoutine = route.params?.routine || null;
   const [name, setName] = useState(editingRoutine?.name || '');
   const [selectedIcon, setSelectedIcon] = useState(editingRoutine?.icon || 'sunny');
@@ -132,12 +133,12 @@ const RoutineEditorScreen = ({ navigation, route }) => {
       </View>
 
       <TouchableOpacity style={styles.saveButton} onPress={saveRoutine}>
-        <Text style={styles.saveButtonText}>Done</Text>
+        <Text style={[styles.saveButtonText, { color: getContrastColor('#4CAF50', colorScheme) }]}>Done</Text>
       </TouchableOpacity>
 
       {editingRoutine && (
         <TouchableOpacity style={styles.deleteButton} onPress={deleteRoutine}>
-          <Text style={styles.deleteButtonText}>Delete Routine</Text>
+          <Text style={[styles.deleteButtonText, { color: getContrastColor('red', colorScheme) }]}>Delete Routine</Text>
         </TouchableOpacity>
       )}
     </ScrollView>

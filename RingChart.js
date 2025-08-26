@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import Svg, { Path, G, Text as SvgText, Circle } from 'react-native-svg';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from './ThemeContext';
+import { getContrastColor } from './colorUtils';
 
 const RingChart = ({ data, onSlicePress, size = 280, innerRadius = 85, outerRadius = 120 }) => {
   const { theme, colorScheme } = useTheme();
@@ -40,14 +41,26 @@ const RingChart = ({ data, onSlicePress, size = 280, innerRadius = 85, outerRadi
     `;
   };
   
-  // Calculate badge position (middle of the slice, between inner and outer radius)
-  const getBadgePosition = (startAngle, endAngle) => {
+  // Calculate badge position with constraints
+  const getBadgePosition = (startAngle, endAngle, forStar = false) => {
+    const sliceAngle = endAngle - startAngle;
     const midAngle = (startAngle + endAngle) / 2;
-    const midRadius = (innerRadius + outerRadius) / 2;
-    const x = size / 2 + midRadius * Math.cos((midAngle * Math.PI) / 180);
-    const y = size / 2 + midRadius * Math.sin((midAngle * Math.PI) / 180);
+    
+    // For small slices, adjust the radius to keep elements inside
+    let effectiveRadius = (innerRadius + outerRadius) / 2;
+    
+    if (forStar && sliceAngle < 30) {
+      // For small slices, position star closer to center to stay within bounds
+      effectiveRadius = (innerRadius + outerRadius) / 2 - 8;
+    }
+    
+    const x = size / 2 + effectiveRadius * Math.cos((midAngle * Math.PI) / 180);
+    const y = size / 2 + effectiveRadius * Math.sin((midAngle * Math.PI) / 180);
     return { x, y };
   };
+  
+  // Determine if star should be shown based on slice size
+  const shouldShowStar = (sliceAngle) => sliceAngle >= 15;
   
   let currentAngle = -90; // Start from top
   
@@ -60,13 +73,16 @@ const RingChart = ({ data, onSlicePress, size = 280, innerRadius = 85, outerRadi
     
     const path = createPieSlice(startAngle, endAngle, innerRadius, outerRadius);
     const badgePos = getBadgePosition(startAngle, endAngle);
+    const starPos = getBadgePosition(startAngle, endAngle, true);
     
     slices.push({
       item,
       path,
       badgePos,
+      starPos,
       startAngle,
-      endAngle
+      endAngle,
+      sliceAngle
     });
   });
 
@@ -85,58 +101,67 @@ const RingChart = ({ data, onSlicePress, size = 280, innerRadius = 85, outerRadi
             </G>
           ))}
           {/* Render badges on top */}
-          {slices.map((slice, index) => (
-            <G key={`badge-${slice.item.name}`}>
-              {/* Badge text with shadow */}
-              <SvgText
-                x={slice.badgePos.x + 1}
-                y={slice.badgePos.y + 6}
-                fontSize="18"
-                fontWeight="bold"
-                fill={colorScheme === 'dark' ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)'}
-                textAnchor="middle"
-              >
-                {slice.item.count}
-              </SvgText>
-              <SvgText
-                x={slice.badgePos.x}
-                y={slice.badgePos.y + 5}
-                fontSize="18"
-                fontWeight="bold"
-                fill={colorScheme === 'dark' ? '#ffffff' : '#000000'}
-                textAnchor="middle"
-                stroke={colorScheme === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)'}
-                strokeWidth="1"
-              >
-                {slice.item.count}
-              </SvgText>
-              {/* Star indicator for habits with shadow */}
-              {slice.item.hasHabits && (
-                <>
+          {slices.map((slice, index) => {
+            const textColor = getContrastColor(slice.item.color, colorScheme);
+            const fontSize = slice.sliceAngle < 20 ? "14" : "18";
+            const starSize = slice.sliceAngle < 30 ? "14" : "16";
+            const showStar = slice.item.hasHabits && shouldShowStar(slice.sliceAngle);
+            
+            // Calculate star position within slice boundaries
+            let starX, starY;
+            const midAngle = (slice.startAngle + slice.endAngle) / 2;
+            
+            if (slice.sliceAngle < 20) {
+              // Very narrow slice: position star closer to inner edge
+              const starRadius = innerRadius + (outerRadius - innerRadius) * 0.3;
+              const starAngle = midAngle;
+              starX = size / 2 + starRadius * Math.cos(starAngle * Math.PI / 180);
+              starY = size / 2 + starRadius * Math.sin(starAngle * Math.PI / 180);
+            } else if (slice.sliceAngle < 40) {
+              // Medium slice: position star at outer part of slice
+              const starRadius = innerRadius + (outerRadius - innerRadius) * 0.75;
+              const starAngle = midAngle;
+              starX = size / 2 + starRadius * Math.cos(starAngle * Math.PI / 180);
+              starY = size / 2 + starRadius * Math.sin(starAngle * Math.PI / 180);
+            } else {
+              // Large slice: position star with angular offset
+              const starRadius = (innerRadius + outerRadius) / 2;
+              // Offset by 20% of the slice angle, but max 15 degrees
+              const angleOffset = Math.min(slice.sliceAngle * 0.2, 15);
+              // Position clockwise from center for better visual balance
+              const starAngle = midAngle + angleOffset;
+              starX = size / 2 + starRadius * Math.cos(starAngle * Math.PI / 180);
+              starY = size / 2 + starRadius * Math.sin(starAngle * Math.PI / 180);
+            }
+            
+            return (
+              <G key={`badge-${slice.item.name}`}>
+                {/* Badge text without shadow */}
+                <SvgText
+                  x={slice.badgePos.x}
+                  y={slice.badgePos.y + 5}
+                  fontSize={fontSize}
+                  fontWeight="700"
+                  fill={textColor}
+                  textAnchor="middle"
+                >
+                  {slice.item.count}
+                </SvgText>
+                {/* Star indicator for habits */}
+                {showStar && (
                   <SvgText
-                    x={slice.badgePos.x + 16}
-                    y={slice.badgePos.y - 9}
-                    fontSize="16"
-                    fill={colorScheme === 'dark' ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)'}
-                    textAnchor="middle"
-                  >
-                    ★
-                  </SvgText>
-                  <SvgText
-                    x={slice.badgePos.x + 15}
-                    y={slice.badgePos.y - 10}
-                    fontSize="16"
+                    x={starX}
+                    y={starY}
+                    fontSize={starSize}
                     fill="#FFD700"
                     textAnchor="middle"
-                    stroke={colorScheme === 'dark' ? 'rgba(255,215,0,0.3)' : 'rgba(255,215,0,0.5)'}
-                    strokeWidth="0.5"
                   >
                     ★
                   </SvgText>
-                </>
-              )}
-            </G>
-          ))}
+                )}
+              </G>
+            );
+          })}
         </G>
       </Svg>
       
@@ -160,7 +185,7 @@ const RingChart = ({ data, onSlicePress, size = 280, innerRadius = 85, outerRadi
       })}
       
       {/* Center text */}
-      <View style={[styles.centerText, { top: size / 2 - 20, left: size / 2 - 50 }]}>
+      <View style={[styles.centerText, { top: size / 2 - 30, left: size / 2 - 50 }]}>
         <Text style={[styles.totalText, { color: theme.text }]}>Total</Text>
         <Text style={[styles.totalCount, { color: theme.text }]}>{total}</Text>
       </View>
@@ -181,11 +206,11 @@ const styles = StyleSheet.create({
   },
   totalText: {
     fontSize: 18,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   totalCount: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });
 

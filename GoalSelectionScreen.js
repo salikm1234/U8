@@ -8,10 +8,13 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
 import { goals as presetGoals } from './goals';
+import { useTheme } from './ThemeContext';
+import { getContrastColor } from './colorUtils';
 import { getUniversalTime } from './dateUtils';
 import { getColorForDimension } from './dateUtils';
 
 const GoalSelectionScreen = ({ route, navigation }) => {
+  const { theme, colorScheme } = useTheme();
     const date = route.params?.date || getUniversalTime().fullDate;
         const [selectedDimension, setSelectedDimension] = useState('Physical'); // Default to first dimension
   const [selectedGoal, setSelectedGoal] = useState('');
@@ -196,7 +199,7 @@ const scheduleRecurringGoals = async () => {
       <View style={[styles.goalItem, { backgroundColor: color }]}>
         <Text style={styles.goalText}>{item.name}</Text>
         <TouchableOpacity onPress={() => removeGoal(item.id)}>
-          <Ionicons name="remove-circle" size={24} color="white" />
+          <Ionicons name="remove-circle" size={24} color={getContrastColor(color, colorScheme)} />
         </TouchableOpacity>
       </View>
     );

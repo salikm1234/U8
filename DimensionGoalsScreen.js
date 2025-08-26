@@ -6,6 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getUniversalTime } from './dateUtils';
 import { getColorForDimension } from './getColorForDimension';
 import { useTheme } from './ThemeContext';
+import { getContrastColor } from './colorUtils';
 
 const DimensionGoalsScreen = ({ route, navigation }) => {
   const { theme, colorScheme } = useTheme();
@@ -224,7 +225,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
       // Render goal item (existing renderItem logic)
       return (
         <View style={[styles.goalItem, { backgroundColor: dimensionColor }]}> 
-          <Text style={[styles.goalText, item.completed && styles.completedText]}>{item.name}</Text>
+          <Text style={[styles.goalText, { color: getContrastColor(dimensionColor, colorScheme) }, item.completed && styles.completedText]}>{item.name}</Text>
           {item.quantifiable && (
             <TouchableOpacity onPress={() => openCounterModal(item)}>
               <Text style={styles.counterText}>{item.count}/{item.target}</Text>
@@ -232,7 +233,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
           )}
           {item.hasNotepad && (
             <TouchableOpacity onPress={() => openNotepadModal(item)}>
-              <Ionicons name="document-text-outline" size={24} color="#fff" style={{ marginRight: 10 }} />
+              <Ionicons name="document-text-outline" size={24} color={getContrastColor(dimensionColor, colorScheme)} style={{ marginRight: 10 }} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -243,7 +244,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
             <Ionicons
               name={item.completed ? "checkmark-circle" : "ellipse-outline"}
               size={28}
-              color={item.completed ? "#00BFFF" : "#fff"}
+              color={item.completed ? "#00BFFF" : getContrastColor(dimensionColor, colorScheme)}
             />
           </TouchableOpacity>
         </View>
@@ -275,14 +276,14 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
             <Text style={{ fontSize: 16, color: theme.text }}>{item.count || 0} / {item.target}</Text>
           </View>
           <TouchableOpacity onPress={() => incrementHabitCount(item.id)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: dimensionColor, alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>
-            <Ionicons name="add" size={18} color="#fff" />
+            <Ionicons name="add" size={18} color={getContrastColor(dimensionColor, colorScheme)} />
           </TouchableOpacity>
         </View>
       );
     }
   };
 
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, colorScheme);
   
   return (
     <View style={styles.container}>
@@ -361,7 +362,7 @@ const DimensionGoalsScreen = ({ route, navigation }) => {
   );
 };
 
-const createStyles = (theme) => StyleSheet.create({
+const createStyles = (theme, colorScheme) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
@@ -389,7 +390,6 @@ const createStyles = (theme) => StyleSheet.create({
   },
   goalText: {
     fontSize: 18,
-    color: '#fff',
     flex: 1,
     marginRight: 10,
   },
@@ -435,7 +435,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   counterButtonText: {
     fontSize: 20,
-    color: '#fff',
+    color: getContrastColor(theme.primaryButtonText, colorScheme),
   },
   closeButton: {
     padding: 10,
@@ -444,7 +444,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginTop: 20,
   },
   closeButtonText: {
-    color: '#fff',
+    color: getContrastColor(theme.primaryButtonText, colorScheme),
     fontSize: 18,
   },
   textInput: {

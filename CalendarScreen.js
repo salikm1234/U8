@@ -8,6 +8,7 @@ import { getUniversalTime } from './dateUtils';
 // import { getColorForDimension } from './dateUtils';
 import { getColorForDimension } from './getColorForDimension';
 import { useTheme } from './ThemeContext';
+import { getContrastColor } from './colorUtils';
 
 const CalendarScreen = ({ navigation }) => {
   const { theme, colorScheme } = useTheme();
@@ -117,12 +118,12 @@ const CalendarScreen = ({ navigation }) => {
 
   const renderItem = ({ item }) => (
     <View style={[styles.goalItem, { backgroundColor: dimensionColors[item.dimension] || '#D3D3D3' }]}>
-      <Text style={[styles.goalText, item.completed && styles.completedText]}>{item.name}</Text>
+      <Text style={[styles.goalText, { color: getContrastColor(dimensionColors[item.dimension] || '#D3D3D3', colorScheme) }, item.completed && styles.completedText]}>{item.name}</Text>
   
       {/* ✅ Just display count (no interaction) */}
       {item.quantifiable && (
         <View style={styles.counter}>
-          <Text style={styles.counterText}>{item.count}/{item.target}</Text>
+          <Text style={[styles.counterText, { color: getContrastColor(dimensionColors[item.dimension] || '#D3D3D3', colorScheme) }]}>{item.count}/{item.target}</Text>
         </View>
       )}
   
@@ -276,7 +277,6 @@ const createStyles = (theme) => StyleSheet.create({
   },
   goalText: {
     fontSize: 18,
-    color: '#fff',
     flex: 1,
   },
   completedText: {
@@ -291,7 +291,6 @@ const createStyles = (theme) => StyleSheet.create({
   },
   counterText: {
     fontSize: 16,
-    color: '#fff',
   },
   noGoals: {
     alignItems: 'center',
