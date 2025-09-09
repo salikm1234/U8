@@ -36,7 +36,7 @@ export default {
         {
           icon: "./assets/notification-icon.png",
           color: "#FFFFFF",
-          sounds: ["default"]
+          // sounds: ["default"]
         }
       ]
     ],
