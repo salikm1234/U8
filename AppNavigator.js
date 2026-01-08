@@ -30,7 +30,7 @@ import HabitSummaryScreen from './HabitSummaryScreen';
 import RoutineTrackingScreen from './RoutineTrackingScreen';
 import RoutineEditorScreen from './RoutineEditorScreen';
 import RoutineActionScreen from './RoutineActionScreen';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import AddTaskScreen from './AddTaskScreen';
 import ActivityRingsScreen from './ActivityRingsScreen';
 import { getUniversalTime } from './dateUtils';

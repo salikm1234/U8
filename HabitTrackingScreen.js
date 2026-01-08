@@ -28,7 +28,7 @@
 import React, { useState, useEffect } from 'react';
 import { KeyboardAvoidingView, ScrollView, Modal, Animated, Keyboard, TouchableOpacity, TextInput, FlatList, Alert, Platform, UIManager, TouchableWithoutFeedback, StyleSheet, View, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getUniversalTime } from './dateUtils';
 import { useNavigation } from '@react-navigation/native';

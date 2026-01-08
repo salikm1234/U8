@@ -6,7 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import ActivityRing from './ActivityRing';
 import { getUniversalTime } from './dateUtils';
 import { useTheme } from './ThemeContext';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { 
   sendGoalRingCompletionNotification, 
   sendHabitRingCompletionNotification,

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ColorPickerModal from './ColorPickerModal';
 import { View, Text, Button, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView, Modal, Dimensions, Animated, Easing } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useFocusEffect, useRoute, useNavigation } from '@react-navigation/native';
 import { goals as presetGoals } from './goals'; // Assuming you have a goals.js file with default preset goals
